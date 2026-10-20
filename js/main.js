@@ -119,6 +119,7 @@ function onClientMessage(msg) {
 
 // ---------- computer players (run on host / local device only) ----------
 let botTimer = null, botCardSeen = null, cardSince = 0, ackCard = null;
+const RESULT_MS = 2000;   // how long the other player's choice stays visible after a click
 const showResultUntil = {};   // card id → time until the bot's result stays visible after a click
 const BUYABLE = ['asset', 'stock', 'etfplan', 'bauspar', 'choice'];
 // a computer player still has to decide on its own card (buy / pass / choose)
@@ -467,7 +468,7 @@ function renderCard() {
     ${s.card.done ? `<p class="done">${doneTxt}</p>` : declined ? `<p class="declined">${t('declinedBy', { name: esc(drawer.name) })}</p>` : ''}
     ${results ? `<div class="cresult"><b>${t('cardResult')}</b>${results}</div>` : ''}
     <div class="cardacts">${actions}</div>
-    ${othersCard ? `<p class="clickhint">${t('clickToContinue')}</p>` : ''}`;
+    ${othersCard ? `<p class="clickhint">${ackCard === s.card.id ? t('closingSoon') : t('clickToContinue')}</p>` : ''}`;
   for (const inp of box.querySelectorAll('[data-sellqty]')) {
     const p = s.players.find(x => x.id === inp.dataset.pid), a = p.assets.find(x => x.id === inp.dataset.sellqty);
     const upd = () => {
@@ -623,17 +624,13 @@ document.addEventListener('click', e => {
       const id = state.card.id;
       ackCard = id;
       for (const p of humansDeciding().filter(mine)) dispatch({ type: 'passCard', pid: p.id });
-      if (mode !== 'client' && botDecisionPending()) {
-        // let the computer decide now and keep its result on screen briefly before the popup closes
-        showResultUntil[id] = Date.now() + 1600;
-        if (botTimer) { clearTimeout(botTimer); botTimer = null; }
-        botStep();
-      } else {
-        closedCard = id;
-        render();
-        if (botTimer) { clearTimeout(botTimer); botTimer = null; }
-        scheduleBots();
-      }
+      // keep the popup (with the other player's choice) on screen for 2 seconds, then close and go on
+      showResultUntil[id] = Date.now() + RESULT_MS;
+      if (botTimer) { clearTimeout(botTimer); botTimer = null; }
+      if (mode !== 'client' && botDecisionPending()) botStep();   // the computer decides right now
+      else render();
+      scheduleBots();
+      setTimeout(() => { if (state.card && state.card.id === id) { closedCard = id; render(); } }, RESULT_MS);
       return;
     }
   }

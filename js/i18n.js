@@ -165,6 +165,7 @@ const S = {
   boughtBy: ['✅ {name} bought it.', '✅ {name} hat gekauft.'],
   declinedBy: ['❌ {name} didn’t buy it.', '❌ {name} hat nicht gekauft.'],
   cardResult: ['What happened:', 'Was passiert ist:'],
+  closingSoon: ['⏳ Closing in a moment …', '⏳ Wird gleich geschlossen …'],
   clickToContinue: ['👆 Click anywhere on the board to close and continue.', '👆 Klicke irgendwo aufs Spielbrett, um zu schließen und weiterzuspielen.'],
   sellTotal: ['Total {amt} · profit {profit} · tax {tax} → you get <b>{net}</b>', 'Gesamt {amt} · Gewinn {profit} · Steuer {tax} → du bekommst <b>{net}</b>'],
   logBtn: ['📜 Log', '📜 Verlauf'],
