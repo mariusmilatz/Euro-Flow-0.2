@@ -17,6 +17,19 @@ Läuft im Browser auf Mac, PC, Tablet und Handy – nichts installieren.
 - **Startreihenfolge:** Vor dem Spiel würfeln alle – die höchste Zahl beginnt, bei Gleichstand wird neu gewürfelt.
 - Der Spielstand wird beim Host automatisch gespeichert („Letztes Spiel fortsetzen“).
 
+## 🆕 Das deutsche System (Version 0.3)
+
+- **Drei Spielmodi:** *Einfach*, *Klassisch*, *Realistisches Deutschland* (Heimatstadt, Kirchensteuer, Inflation).
+- **Echte Lohnsteuer** nach §32a EStG (2025), Soli nur oberhalb der Freigrenze, Sozialabgaben mit Beitragsbemessungsgrenzen, Grenzsteuersatz pro Beruf.
+- **Ausstiegsziel** = Lebenshaltungskosten + selbst bezahlte Krankenversicherung (Lohnsteuer & Sozialabgaben zählen nicht).
+- **Steuerberater & AfA:** Abschreibung (2 %, Denkmal 9 %) senkt die Lohnsteuer – je höher der Steuersatz, desto mehr.
+- **1 Runde = 1 Jahr:** Weihnachtsgeld, Steuererstattung, Nebenkostenabrechnung, Inflation; Spekulationsfrist 4 Runden (= 10 Jahre), Gold & Krypto 1 Runde.
+- **Gekündigt:** 2 Zahltage Arbeitslosengeld I statt Rundenaussetzen; Eigenkündigung mit Sperrzeit.
+- **Neue Karten:** ETF-Sparplan (4-%-Regel, Teilfreistellung), Bausparvertrag, Krypto, Genossenschaftsanteile, Mittelstand-Beteiligungen, Mietnomaden, EZB-Zinsen, Ordnungsamt, SUV-Leasing.
+- **Grunderwerbsteuer je Bundesland** (3,5–6,5 %) + Notar.
+- **Nettovermögen** im Finanzbericht und **Auswertung** am Spielende (Vermögenskurve, Rangliste, bester/schlechtester Zug).
+- **Coach** nennt das Gesetz hinter jeder Karte.
+
 ## 🇩🇪 Was ist deutsch daran?
 
 | Original-Idee | Euro Flow |
@@ -48,6 +61,8 @@ js/data_en.js   Englische Kartentexte (gleiche Reihenfolge wie data.js)
 js/i18n.js      Alle Texte Englisch/Deutsch + Spielregeln
 js/engine.js    Spielregeln
 js/bot.js       Computer-Gegner (leicht / mittel / schwer)
+js/tax.js       Lohnsteuer (§32a EStG), Soli, Kirchensteuer, Sozialabgaben
+js/report.js    Auswertung am Spielende
 js/assistant.js Coach
 js/board.js     Spielbrett (SVG)
 js/net.js       Online-Verbindung

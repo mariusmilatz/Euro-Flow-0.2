@@ -52,6 +52,14 @@ export const SMALL_EN = [
   ['Special levy!', 'The owners’ meeting decides on a new roof. If you own a condo, pay 1,500 €.'],
   ['Tenant stops paying', 'Your tenant hasn’t paid for 2 months. If you own rental property, pay 800 € for the lawyer.'],
   ['Tax refund!', 'You finally did your tax return (work expenses, home-office allowance). The tax office refunds 1,200 €.'],
+  ['ETF savings plan', 'Your bank offers a free savings plan on a World ETF (MSCI World). Choose how much is invested automatically every payday – change or pause it any time.'],
+  ['ETF savings plan – broker promo', 'A neobroker waives the order fees. Start or increase a savings plan on the World ETF.'],
+  ['Crypto dip: Bitcoin', 'Bitcoin is cheap after a crash: 4 units at €500 each. In Germany, gains are tax-free after holding for 1 year (§23 EStG).', 'Bitcoin (fractions)'],
+  ['Crypto: Ethereum', 'A friend raves about Ethereum: 10 units at €300 each. Very volatile – only use money you can spare.', 'Ethereum (fractions)'],
+  ['Building savings contract (Bausparvertrag)', 'The building society offers a contract: you save €150 every payday. Once €3,000 is saved it is ready – then you get a cheap building loan for a property purchase (1 %/month instead of 10 %).'],
+  ['Cooperative shares', 'Join your cooperative bank (Volksbank): €2,000 in shares, about 3 % dividend per year. Safe, but small.', 'Cooperative bank shares'],
+  ['Housing cooperative', 'A housing cooperative is looking for members: €3,000 in shares, solid dividend, a say in decisions.', 'Housing cooperative shares'],
+  ['Rent nomad!', 'A tenant stops paying. In Germany an eviction takes months (tenant protection). If you own rental property: one of them earns no rent for 3 paydays.'],
 ];
 
 export const BIG_EN = [
@@ -79,6 +87,10 @@ export const BIG_EN = [
   ['Heating law!', 'The old gas heating in an apartment building breaks. A new heat pump is required: if you own an apartment building, pay 5,000 €.'],
   ['Tenant trashes flat', 'After moving out the flat is wrecked. The deposit isn’t enough. If you own rental property, pay 1,000 €.'],
   ['Property tax reform', 'The new German property tax (Grundsteuer) arrives. Pay 300 € for every property you own.'],
+  ['Listed-building flat', 'Renovated 19th-century flat under heritage protection. With a tax advisor: 9 % special depreciation per year (§7i EStG) instead of 2 % – ideal with a high tax rate. Careful: if you renovate for more than 15 % of the building value within 3 years yourself, the costs must be written off over years.', 'Listed-building flat, Görlitz'],
+  ['Mittelstand firm wants a silent partner', 'A family-owned company in the Black Forest is building a new hall and wants a silent partnership with a fixed profit share.', 'Silent stake: machine builder (Mittelstand)'],
+  ['Silent stake: logistics', 'A haulage firm with 120 trucks needs capital for electric trucks. Silent partnership with about 15 % return.', 'Silent stake: logistics company'],
+  ['Rent nomad in your property', 'A tenant in one of your rental properties stops paying. The eviction lawsuit takes time: 3 paydays without that rent.'],
 ];
 
 export const MARKET_EN = [
@@ -112,6 +124,18 @@ export const MARKET_EN = [
   ['Burst water pipe', 'Only the player who draws this card: if you own property, pay 2,000 € (insurance excess).'],
   ['Tax advisor bill', 'Only the player who draws this card: if you own a business, your tax advisor costs you 1,500 € extra.'],
   ['Quiet market', 'Nothing happens. The markets are waiting for the ECB’s next interest rate decision.'],
+  ['Bitcoin rally!', 'A halving year: Bitcoin quadruples. Buyers pay €2,000 per unit.'],
+  ['Bitcoin rises', 'Buyers pay €900 per Bitcoin unit.'],
+  ['Ethereum boom', 'Buyers pay €900 per Ethereum unit.'],
+  ['Crypto crash', 'A big crypto exchange goes bust. Panic sellers get only €120 per unit.'],
+  ['Family buys back', 'The owner family buys out silent partners for €120,000.'],
+  ['ECB cuts interest rates', 'Loans get cheaper, property is in demand: all property prices on buyer cards rise by 8 %.'],
+  ['Mortgage rates fall', 'Home loans get cheaper. Property prices on buyer cards rise by 8 %.'],
+  ['ECB raises interest rates', 'The ECB fights inflation. Loans get more expensive: property prices on buyer cards fall by 8 %.'],
+  ['Mortgage rates jump to 4 %', 'Many buyers can’t afford anything any more. Property prices on buyer cards fall by 8 %.'],
+  ['Stock market rally', 'The World ETF rises 15 %. Every ETF savings plan gains.'],
+  ['Global stock crash', 'Panic! The World ETF falls 25 %. Whoever keeps saving now buys cheap.'],
+  ['Rent nomad', 'Only the player who draws this card: a tenant stops paying. 3 paydays without rent from one of your properties.'],
 ];
 
 export const DOODADS_EN = [
@@ -143,6 +167,11 @@ export const DOODADS_EN = [
   ['New car', 'The dealer has a “super offer”. Car loan +8,000 €, +180 €/month.'],
   ['Index rent rises', 'Your rent is linked to inflation (Indexmiete). If you rent: rent +80 €/month.'],
   ['Moving to a bigger flat', 'You need more space. If you rent: rent +120 €/month.'],
+  ['Public order office: snow not cleared', 'It snowed and you didn’t clear your sidewalk. Fine: €75.'],
+  ['Rubbish sorted wrongly', 'The plastic bag in the organic bin was too much. The public order office wants €55.'],
+  ['Late tax return', 'Late-filing surcharge from the tax office: €250.'],
+  ['Premium SUV leased', 'The neighbour has one, so you do too: premium SUV lease for €420/month (residual value €15,000).'],
+  ['Trouble at work', 'Your boss makes your life hard. A) You quit yourself: 3 paydays of Sperrzeit (no salary, no unemployment benefit), then a new job with +10 % salary. B) You stay: coaching and a holiday cost €800.'],
 ];
 
 // [name, text]

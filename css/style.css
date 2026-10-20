@@ -262,3 +262,39 @@ summary::-webkit-details-marker { display: none; }
 @media (max-width: 1100px) {
   .coachbox { position: static; width: auto; max-height: 50vh; margin-top: 10px; border-radius: 18px; padding: 12px 14px; font-size: 14px; }
 }
+
+/* Game modes in the lobby */
+.lobbymode { margin: 10px 0 4px; text-align: left; }
+.lobbymode > label { font-weight: 800; display: block; margin-bottom: 6px; text-align: center; }
+.modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.modebtn { border: 2px solid rgba(255,255,255,.3); background: rgba(255,255,255,.1); color: #fff; border-radius: 14px; padding: 10px; text-align: left; display: flex; flex-direction: column; gap: 4px; }
+.modebtn small { opacity: .8; font-size: 12px; line-height: 1.3; }
+.modebtn.on { background: #fff; color: var(--ink); border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold); }
+.modebtn:disabled { cursor: default; }
+.lp .church { flex: 0 0 auto; min-width: 0; display: flex; align-items: center; gap: 4px; }
+@media (max-width: 600px) { .modes { grid-template-columns: 1fr; } }
+
+/* Tray info line */
+.trayinfo { display: flex; flex-wrap: wrap; gap: .3em .7em; margin-top: .5em; font-size: .82em; color: var(--muted); border-top: 1px dashed var(--line); padding-top: .4em; }
+
+/* Statement extras */
+.badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.badge { font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: #eee6fb; color: var(--purple); }
+.badge.red { background: #fde3e7; color: var(--neg); } .badge.green { background: #dcf7e6; color: var(--pos); } .badge.purple { background: #efe2fb; color: #8a4fbf; }
+.escape { margin-bottom: 8px; } .escape small { display: block; font-size: 11.5px; color: var(--muted); margin-top: -4px; }
+.r.pos b { color: var(--pos); }
+.advisor { background: #fff7d6; border-radius: 12px; padding: 8px 10px; font-size: 12.5px; margin: 6px 0; }
+.advisor.on { background: #dcf7e6; }
+.etfctl { display: flex; gap: 4px; align-items: center; margin-top: 4px; flex-wrap: wrap; }
+.etfctl input { width: 80px; padding: 4px 6px; border-radius: 8px; border: 1px solid var(--line); }
+
+/* End-of-game report */
+.winbox.report { max-width: 680px; width: 100%; max-height: 92vh; overflow: auto; text-align: left; }
+.winbox.report .trophy, .winbox.report h2, .winbox.report > p { text-align: center; }
+.winbox.report h4 { margin: 10px 0 4px; }
+.nwchart { width: 100%; height: auto; background: #faf7ff; border-radius: 12px; }
+.legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 12px; } .legend i { display: inline-block; width: 12px; height: 4px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+.rank { width: 100%; border-collapse: collapse; font-size: 13.5px; } .rank td { padding: 6px 4px; border-bottom: 1px solid var(--line); vertical-align: top; } .rank tr.me { background: #fff7d6; }
+.movegrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+.moves { background: #faf7ff; border-radius: 12px; padding: 8px 10px; font-size: 12.5px; } .moves.me { outline: 2px solid var(--gold); }
+.winbtns { display: flex; gap: 8px; justify-content: center; margin-top: 12px; flex-wrap: wrap; }

@@ -1,6 +1,6 @@
 // Euro Flow – English (default) and German texts.
 // Every UI string lives here as key: [English, German]. Add a language by adding a third column.
-import { SMALL, BIG, MARKET, DOODADS, FAST, PROFESSIONS, STOCKS } from './data.js';
+import { SMALL, BIG, MARKET, DOODADS, FAST, STOCKS } from './data.js';
 import { PROF_EN, STOCKS_EN, SMALL_EN, BIG_EN, MARKET_EN, DOODADS_EN, FAST_EN } from './data_en.js';
 
 const DECK_DE = { small: SMALL, big: BIG, market: MARKET, doodad: DOODADS };
@@ -33,7 +33,13 @@ export const stockName = sym => (lang === 'en' && STOCKS_EN[sym].name) || STOCKS
 export const stockWhat = sym => (lang === 'en' ? STOCKS_EN[sym].what : STOCKS[sym].what);
 export const fastName = i => (lang === 'de' ? FAST[i].name.replace('­', '') : FAST_EN[i][0]);
 export const fastText = i => (lang === 'de' ? FAST[i].text : FAST_EN[i][1]) || '';
-export const profName = key => (lang === 'de' ? PROFESSIONS.find(p => p.key === key)?.name : PROF_EN[key]) || key;
+const PROF_DE = {
+  hausmeister: 'Hausmeister/in', pflege: 'Pflegefachkraft', bus: 'Busfahrer/in', buero: 'Bürokaufmann/-frau', kfz: 'Kfz-Mechatroniker/in',
+  polizei: 'Polizist/in (Beamte)', lehrer: 'Lehrer/in (verbeamtet)', dev: 'Softwareentwickler/in', ing: 'Ingenieur/in',
+  anwalt: 'Rechtsanwalt/-anwältin', arzt: 'Ärztin/Arzt', pilot: 'Pilot/in',
+};
+export const profName = key => (lang === 'de' ? PROF_DE[key] : PROF_EN[key]) || key;
+export const cityName = c => (c ? (lang === 'de' ? c.nameDe : c.name) : '');
 export const assetName = a => (a.kind === 'stock' ? `${t('stockWord')} ${a.sym}` : a.ref ? cardT(a.ref[0], a.ref[1]).name : '?');
 
 // Turn a log/error params object into text
@@ -178,7 +184,7 @@ const S = {
   cAmount: ['Amount', 'Menge'], coins: ['{n} coins', '{n} Münzen'], perCoin: ['Price per coin', 'Preis je Münze'], total: ['Total', 'Gesamt'],
   cPrice: ['Price', 'Kaufpreis'], cNk: ['Purchase costs 7 %', 'Kaufnebenkosten 7 %'], cEquity: ['Your cash (down payment)', 'Eigenkapital'], cCapital: ['Capital needed', 'Kapitaleinsatz'],
   cMortgage: ['Bank mortgage', 'Bankdarlehen'], cLiability: ['Liability', 'Verbindlichkeit'], cCf: ['Cash flow / month', 'Cashflow / Monat'],
-  cNkFine: ['Purchase costs = real-estate transfer tax (Grunderwerbsteuer), notary & land register. Selling at a profit within 10 years → speculation tax.', 'Kaufnebenkosten = Grunderwerbsteuer, Notar & Grundbuch. Verkauf mit Gewinn innerhalb von 10 Jahren → Spekulationssteuer.'],
+  cNkFine: ['Purchase costs = real-estate transfer tax (Grunderwerbsteuer), notary & land register. Selling at a profit within the speculation period (4 laps = 10 real years) → speculation tax.', 'Kaufnebenkosten = Grunderwerbsteuer, Notar & Grundbuch. Verkauf mit Gewinn innerhalb der Spekulationsfrist (4 Runden = 10 echte Jahre) → Spekulationssteuer.'],
   cBuyerPays: ['Buyer pays', 'Käufer zahlt'], perUnitCoin: ['{amt} per coin', '{amt} pro Münze'], perUnitFlat: ['{amt} per unit', '{amt} pro Wohneinheit'], multPrice: ['{n}× purchase price', '{n}× Kaufpreis'],
   cSellFine: ['Everyone who owns this may sell now. The loan is repaid from the proceeds.', 'Jeder, der so etwas besitzt, darf jetzt verkaufen. Das Darlehen wird vom Erlös abgelöst.'],
 
@@ -188,7 +194,7 @@ const S = {
   skipsN: ['misses {n}×', 'setzt {n}× aus'],
   charityN: ['💜 {n}× 2 dice', '💜 {n}× 2 Würfel'],
   cash: ['Cash', 'Bargeld'], paydayCf: ['Payday (cash flow)', 'Zahltag (Cashflow)'], kids: ['Children', 'Kinder'],
-  progress: ['Passive income {pas} / expenses {exp} – {rest}', 'Passives Einkommen {pas} / Ausgaben {exp} – {rest}'],
+  progress: ['Passive income {pas} / escape target {exp} – {rest}', 'Passives Einkommen {pas} / Ausstiegsziel {exp} – {rest}'],
   escape: ['Escape the hamster wheel! 🚀', 'Raus aus dem Hamsterrad! 🚀'],
   stillNeed: ['{amt} to go', 'noch {amt}'],
   income: ['Income', 'Einnahmen'], expenses: ['Expenses', 'Ausgaben'], assets: ['Assets', 'Vermögen'], liabilities: ['Liabilities', 'Verbindlichkeiten'],
@@ -214,7 +220,7 @@ const S = {
   exSv: ['Social insurance (pension, health, care, unemployment)', 'Sozialversicherung'],
   exPkv: ['Private health insurance', 'Private Krankenversicherung'],
   exRent: ['Rent (incl. utilities)', 'Miete (warm)'],
-  exOther: ['Living costs (food, phone, insurance …)', 'Lebenshaltung (Essen, Handy, Versicherungen …)'],
+  exOther: ['Food, phone, leisure', 'Essen, Handy, Freizeit'],
   exKids: ['Children ({n} × {amt})', 'Kinder ({n} × {amt})'],
   exLoan: ['Bank loan interest (10 %/month)', 'Bankkredit-Zinsen (10 %/Monat)'],
   debt_baufi: ['Home mortgage (Baufinanzierung)', 'Baufinanzierung (Eigenheim)'],
@@ -252,7 +258,7 @@ const S = {
   lDraws: ['🃏 {name} draws “{card}”', '🃏 {name} zieht „{card}“'],
   lBaby: ['👶 {name} has a baby! +{amt} expenses, +{kg} child benefit.', '👶 {name} bekommt ein Baby! +{amt} Ausgaben, +{kg} Kindergeld.'],
   lBaby3: ['👶 {name} already has 3 children – no more babies.', '👶 {name} hat schon 3 Kinder – kein weiteres Baby.'],
-  lFired: ['📉 {name} was fired! Unemployment benefit (60 % of net pay) = {amt}.', '📉 {name} wurde gekündigt! Arbeitslosengeld I (60 % vom Netto) = {amt}.'],
+  lFired: ['📉 {name} was fired! For 2 paydays: unemployment benefit {amt} instead of salary (60 % of net). Investments keep paying.', '📉 {name} wurde gekündigt! 2 Zahltage lang: Arbeitslosengeld I {amt} statt Gehalt (60 % vom Netto). Investitionen zahlen weiter.'],
   whyFired: ['expenses minus unemployment benefit', 'Ausgaben minus Arbeitslosengeld'],
   whyStock: ['{qty} × {sym} at {price}', '{qty} × {sym} zu {price}'],
   whyEquity: ['down payment for {cardName}', 'Eigenkapital für {cardName}'],
@@ -290,7 +296,7 @@ const S = {
   lRepayLoan: ['✔️ {name} repays {amt} of the bank loan.', '✔️ {name} tilgt {amt} Bankkredit.'],
   lRepayDebt: ['✔️ {name} pays off {debt} completely ({amt}): −{pay}/month expenses.', '✔️ {name} löst {debt} komplett ab ({amt}): −{pay}/Monat Ausgaben.'],
   taxAbgeltung: ['capital gains tax + Soli (26.375 %)', 'Abgeltungsteuer + Soli (26,375 %)'],
-  taxSpekuImmo: ['speculation tax (sold within 10 years)', 'Spekulationssteuer (Verkauf innerhalb von 10 Jahren)'],
+  taxSpekuImmo: ['speculation tax (sold within the speculation period)', 'Spekulationssteuer (Verkauf innerhalb der Spekulationsfrist)'],
   taxSpekuGold: ['speculation tax (gold held < 1 year)', 'Spekulationssteuer (Gold kürzer als 1 Jahr gehalten)'],
 
   // Errors
@@ -332,6 +338,140 @@ const S = {
   bCfDay: ['EURO FLOW|DAY', 'EURO-FLOW|TAG'], bFoundation: ['START A|FOUNDATION', 'STIFTUNG|GRÜNDEN'],
   bMonth: ['/mo', '/Mon.'], bStake: ['Stake {amt}', 'Einsatz {amt}'], bOnly6: ['only 6', 'nur 6'],
   bOwnedBy: ['owned by {name}', 'gehört {name}'], bDreamOf: ['Dream of {name} – now costs {amt}', 'Traum von {name} – kostet jetzt {amt}'],
+  // ===== German-system update =====
+  gameMode: ['Game mode', 'Spielmodus'],
+  mode_easy: ['Easy', 'Einfach'],
+  modeHint_easy: ['No taxes on sales, no health-insurance rule – learn the basics first.', 'Keine Steuern auf Verkäufe, ohne Krankenversicherungs-Regel – erst die Grundlagen lernen.'],
+  mode_classic: ['Classic', 'Klassisch'],
+  modeHint_classic: ['German taxes on sales, tax advisor & depreciation, yearly events, health insurance in the escape target.', 'Steuern auf Verkäufe, Steuerberater & Abschreibung, jährliche Ereignisse, Krankenversicherung im Ausstiegsziel.'],
+  mode_realistic: ['Realistic Germany', 'Realistisches Deutschland'],
+  modeHint_realistic: ['Everything + home city (salary, rent, transfer tax by state), church tax and inflation.', 'Alles + Heimatstadt (Gehalt, Miete, Grunderwerbsteuer je Bundesland), Kirchensteuer und Inflation.'],
+  homeCity: ['Home city:', 'Heimatstadt:'],
+  churchMember: ['Church member (church tax)', 'Kirchenmitglied (Kirchensteuer)'],
+  yearN: ['Year {n}', 'Jahr {n}'],
+  yearHint: ['1 lap around the hamster wheel = 1 year', '1 Runde im Hamsterrad = 1 Jahr'],
+  etfIndex: ['World ETF', 'Welt-ETF'],
+  indexHint: ['World ETF index (starts at 100). It moves on every market space.', 'Welt-ETF-Index (Start bei 100). Er bewegt sich auf jedem Marktfeld.'],
+  rateHint: ['ECB interest level – changes property prices on buyer cards.', 'EZB-Zinsniveau – verändert die Immobilienpreise auf Käuferkarten.'],
+  'rate_-2': ['Rates very low', 'Zinsen sehr niedrig'], 'rate_-1': ['Rates low', 'Zinsen niedrig'], rate_0: ['Rates normal', 'Zinsen normal'],
+  rate_1: ['Rates high', 'Zinsen hoch'], rate_2: ['Rates very high', 'Zinsen sehr hoch'],
+  cTeilfrei: ['Tax-free share of gains (Teilfreistellung)', 'Teilfreistellung'],
+  cEtfFine: ['Every payday your chosen amount is invested. 4 % of the value per year is paid to you as passive income (4 % rule). Sell any time in your statement: 30 % of the gain is tax-free, the rest pays 26.375 % above your yearly allowance.', 'Jeden Zahltag wird dein Betrag investiert. 4 % des Werts pro Jahr werden dir als passives Einkommen ausgezahlt (4-%-Regel). Verkaufen jederzeit im Finanzbericht: 30 % des Gewinns sind steuerfrei, der Rest kostet 26,375 % über dem Freibetrag.'],
+  cMonthly: ['Every payday', 'Jeden Zahltag'],
+  cBausparReady: ['Ready at', 'Zuteilungsreif ab'],
+  cBausparLoan: ['Building loan', 'Bauspardarlehen'],
+  cBausparLoanV: ['up to 2× savings, 1 %/month', 'bis 2× Guthaben, 1 %/Monat'],
+  cRateNow: ['Interest level now', 'Zinsniveau jetzt'],
+  units: ['{n} units', '{n} Anteile'],
+  perUnit: ['Price per unit', 'Preis je Anteil'],
+  cNkPct: ['Purchase costs {pct} % {st}', 'Kaufnebenkosten {pct} % {st}'],
+  cAfa: ['Depreciation (AfA) per year', 'Abschreibung (AfA) pro Jahr'],
+  perUnitCrypto: ['{amt} per unit', '{amt} pro Anteil'],
+  cRateAdj: ['Property prices adjusted for the interest level ({lvl}).', 'Immobilienpreise angepasst ans Zinsniveau ({lvl}).'],
+  etfPerPayday: ['Per payday:', 'Pro Zahltag:'],
+  etfStart: ['Start plan', 'Sparplan starten'],
+  etfIncrease: ['Increase plan', 'Sparplan erhöhen'],
+  bausparSign: ['Sign contract ({amt}/payday)', 'Vertrag abschließen ({amt}/Zahltag)'],
+  choiceQuit: ['A) Quit', 'A) Kündigen'],
+  choiceStay: ['B) Stay (€800)', 'B) Bleiben (800 €)'],
+  buyWithBauspar: ['Buy with Bausparvertrag ({amt} saved + cheap loan)', 'Mit Bausparvertrag kaufen ({amt} Guthaben + günstiges Darlehen)'],
+  taxFreeFrom: ['tax-free from year {n}', 'steuerfrei ab Jahr {n}'],
+  taxFreeNow: ['tax-free when sold', 'steuerfrei verkaufbar'],
+  choseQuit: ['🚪 {name} quit the job.', '🚪 {name} hat gekündigt.'],
+  choseStay: ['🧘 {name} stayed.', '🧘 {name} ist geblieben.'],
+  netWorth: ['Net worth', 'Nettovermögen'],
+  ownHome: ['Own home (lived in)', 'Eigenheim (selbst bewohnt)'],
+  ownHomeHint: ['counts for net worth, but brings no income – it costs you every month', 'zählt zum Vermögen, bringt aber kein Einkommen – es kostet dich jeden Monat'],
+  stAlg: ['Unemployed ({n} paydays)', 'Arbeitslos ({n} Zahltage)'],
+  stSperr: ['Sperrzeit ({n} paydays)', 'Sperrzeit ({n} Zahltage)'],
+  stAdvisor: ['Tax advisor', 'Steuerberater'],
+  vacantN: ['no rent: {n} paydays', 'keine Miete: {n} Zahltage'],
+  etfVal: ['value {val} · gain {gain} · {m}/payday', 'Wert {val} · Gewinn {gain} · {m}/Zahltag'],
+  bausparVal: ['saved {val} of {need}', 'gespart {val} von {need}'],
+  bausparReadyV: ['saved {val} – ready! Use it when buying property.', 'gespart {val} – zuteilungsreif! Beim Immobilienkauf nutzbar.'],
+  etfSetBtn: ['Change', 'Ändern'],
+  etfSellBtn: ['Sell all (+{amt})', 'Alles verkaufen (+{amt})'],
+  etfSellHint: ['Tax on sale: {tax}', 'Steuer beim Verkauf: {tax}'],
+  advisorOn: ['Tax advisor hired: depreciation saves you {amt}/month in income tax (your marginal rate: {rate} %).', 'Steuerberater beauftragt: Die Abschreibung spart dir {amt}/Monat Lohnsteuer (dein Grenzsteuersatz: {rate} %).'],
+  advisorOff: ['Tax advisor ({fee} once, then {m}/month): would save you {amt}/month through depreciation (AfA) on your property. Your marginal tax rate: {rate} %.', 'Steuerberater ({fee} einmalig, dann {m}/Monat): würde dir durch Abschreibung (AfA) auf deine Immobilien {amt}/Monat sparen. Dein Grenzsteuersatz: {rate} %.'],
+  advisorHire: ['Hire', 'Beauftragen'],
+  advisorFire: ['Cancel', 'Kündigen'],
+  escapeBreak: ['Escape target = living costs {living} + self-paid health insurance {health} = {total}. Salary taxes don’t count – without a job you don’t pay them.', 'Ausstiegsziel = Lebenshaltung {living} + selbst bezahlte Krankenversicherung {health} = {total}. Lohnsteuer & Sozialabgaben zählen nicht – ohne Job zahlst du sie nicht.'],
+  escapeBreakNoHealth: ['Escape target = your living costs {total}.', 'Ausstiegsziel = deine Lebenshaltungskosten {total}.'],
+  deductions: ['Salary deductions', 'Abzüge vom Gehalt'],
+  livingCosts: ['Living costs', 'Lebenshaltungskosten'],
+  savingsPlans: ['Savings plans', 'Sparpläne'],
+  repChart: ['Net worth over time', 'Nettovermögen im Zeitverlauf'],
+  repRanking: ['Ranking by net worth', 'Rangliste nach Nettovermögen'],
+  repMoves: ['Best 👍 and worst 👎 move', 'Bester 👍 und schlechtester 👎 Zug'],
+  repCompare: ['You finished #{rank} of {n} with {nw}. Best computer player: {best} with {bnw}.', 'Du bist Platz {rank} von {n} mit {nw}. Bester Computer-Gegner: {best} mit {bnw}.'],
+  // statement lines
+  inAlg: ['Unemployment benefit I (60 % of net, {n} paydays left)', 'Arbeitslosengeld I (60 % vom Netto, noch {n} Zahltage)'],
+  inSperr: ['No income – Sperrzeit ({n} paydays left)', 'Kein Einkommen – Sperrzeit (noch {n} Zahltage)'],
+  dTax: ['Income tax (marginal rate {rate} %)', 'Lohnsteuer (Grenzsteuersatz {rate} %)'],
+  dSoli: ['Solidarity surcharge', 'Solidaritätszuschlag'],
+  dChurch: ['Church tax', 'Kirchensteuer'],
+  dSv: ['Social insurance (pension, health, care, unemployment)', 'Sozialversicherung (Rente, Kranken, Pflege, Arbeitslosen)'],
+  dPkv: ['Private health insurance', 'Private Krankenversicherung'],
+  dAfa: ['Tax saved through depreciation (AfA)', 'Steuerersparnis durch Abschreibung (AfA)'],
+  exCar: ['Car (fuel, insurance, upkeep)', 'Auto (Sprit, Versicherung, Unterhalt)'],
+  exIns: ['Insurances (liability, disability)', 'Versicherungen (Haftpflicht, Berufsunfähigkeit)'],
+  exGez: ['Broadcasting fee (GEZ)', 'Rundfunkbeitrag (GEZ)'],
+  exAdvisor: ['Tax advisor', 'Steuerberater'],
+  svEtf: ['ETF savings plan', 'ETF-Sparplan'],
+  svBauspar: ['Bausparvertrag', 'Bausparvertrag'],
+  debt_leasing: ['Lease contract', 'Leasingvertrag'],
+  debt_bauspar: ['Building loan (Bauspardarlehen)', 'Bauspardarlehen'],
+  withAdvisor: ['with tax advisor', 'mit Steuerberater'],
+  withoutAdvisor: ['filed yourself', 'selbst gemacht'],
+  whyNk: ['utility bill back-payment (Nebenkostenabrechnung)', 'Nachzahlung Nebenkostenabrechnung'],
+  taxCrypto: ['crypto speculation tax (held less than 1 year)', 'Krypto-Spekulationssteuer (Haltedauer unter 1 Jahr)'],
+  // log
+  lBausparReady: ['🏠 {name}’s Bausparvertrag is ready ({amt} saved).', '🏠 Der Bausparvertrag von {name} ist zuteilungsreif ({amt} gespart).'],
+  lTenantBack: ['🏠 {name}: rent is paid again in {asset}.', '🏠 {name}: In {asset} wird wieder Miete gezahlt.'],
+  lBackToWork: ['💼 {name} has a job again.', '💼 {name} hat wieder einen Job.'],
+  lNewJob: ['💼 {name} starts a new job: {amt} gross.', '💼 {name} startet einen neuen Job: {amt} brutto.'],
+  lNewYear: ['📅 {name} starts year {n}.', '📅 {name} startet ins Jahr {n}.'],
+  lXmas: ['🎄 {name} gets a Christmas bonus (Weihnachtsgeld): +{amt}', '🎄 {name} bekommt Weihnachtsgeld: +{amt}'],
+  lTaxRefund: ['🧾 Tax return ({how}): {name} gets {amt} back.', '🧾 Steuererklärung ({how}): {name} bekommt {amt} zurück.'],
+  lNkBack: ['🧾 {name}: utility bill settlement (rolled {r}) – back-payment!', '🧾 {name}: Nebenkostenabrechnung (gewürfelt {r}) – Nachzahlung!'],
+  lNkRefund: ['🧾 {name}: utility bill settlement (rolled {r}) – refund +{amt}', '🧾 {name}: Nebenkostenabrechnung (gewürfelt {r}) – Guthaben +{amt}'],
+  lNkEven: ['🧾 {name}: utility bill settlement (rolled {r}) – all even.', '🧾 {name}: Nebenkostenabrechnung (gewürfelt {r}) – alles ausgeglichen.'],
+  lInflation: ['📈 Inflation: {name}’s living costs rise by {amt}/month.', '📈 Inflation: Die Lebenshaltungskosten von {name} steigen um {amt}/Monat.'],
+  lBadTenant: ['🏚️ {name}: rent nomad in {asset} – −{amt}/month for 3 paydays.', '🏚️ {name}: Mietnomade in {asset} – −{amt}/Monat für 3 Zahltage.'],
+  lRate: ['🏦 Interest level: {lvl}. Property prices on buyer cards: {pct} %.', '🏦 Zinsniveau: {lvl}. Immobilienpreise auf Käuferkarten: {pct} %.'],
+  lIndex: ['📈 World ETF {pct} % → index {idx}', '📈 Welt-ETF {pct} % → Index {idx}'],
+  lIndexRoll: ['📈 Market day: {name} rolls {r} for the World ETF: {pct} % → index {idx}', '📈 Börsentag: {name} würfelt {r} für den Welt-ETF: {pct} % → Index {idx}'],
+  lAlreadyNoJob: ['{name} has no job right now – nothing more to lose.', '{name} hat gerade keinen Job – nichts mehr zu verlieren.'],
+  lEtfStart: ['📈 {name} now saves {amt} per payday in the World ETF.', '📈 {name} spart jetzt {amt} pro Zahltag in den Welt-ETF.'],
+  lBausparStart: ['🏠 {name} signs a Bausparvertrag: {amt} per payday.', '🏠 {name} schließt einen Bausparvertrag ab: {amt} pro Zahltag.'],
+  lBausparUse: ['🏠 {name} uses the Bausparvertrag: {amt} savings + building loan {loan} ({pay}/month).', '🏠 {name} nutzt den Bausparvertrag: {amt} Guthaben + Bauspardarlehen {loan} ({pay}/Monat).'],
+  lQuit: ['🚪 {name} quits – Sperrzeit: 3 paydays without salary or benefit, then a better job.', '🚪 {name} kündigt – Sperrzeit: 3 Zahltage ohne Gehalt und Arbeitslosengeld, danach ein besserer Job.'],
+  lStay: ['🧘 {name} stays and pays for coaching and a holiday.', '🧘 {name} bleibt und zahlt Coaching und Urlaub.'],
+  lAdvisorOn: ['🧾 {name} hires a tax advisor ({amt} once, {m}/month).', '🧾 {name} beauftragt einen Steuerberater ({amt} einmalig, {m}/Monat).'],
+  lAdvisorOff: ['🧾 {name} cancels the tax advisor.', '🧾 {name} kündigt den Steuerberater.'],
+  lEtfSet: ['📈 {name} changes the ETF plan to {amt} per payday.', '📈 {name} ändert den ETF-Sparplan auf {amt} pro Zahltag.'],
+  lEtfPause: ['⏸ {name} pauses the ETF plan.', '⏸ {name} pausiert den ETF-Sparplan.'],
+  lEtfSell: ['💹 {name} sells the ETF for {amt} (gain {gain}, tax {tax}).', '💹 {name} verkauft den ETF für {amt} (Gewinn {gain}, Steuer {tax}).'],
+  // best / worst moves
+  nBuy: ['Bought {cardName} (+{cf}/month)', '{cardName} gekauft (+{cf}/Monat)'],
+  nSell: ['Sold {asset}: {amt} profit', '{asset} verkauft: {amt} Gewinn'],
+  nSellLoss: ['Sold {asset} at a loss: {amt}', '{asset} mit Verlust verkauft: {amt}'],
+  nSellStock: ['Sold {sym} shares: {amt}', '{sym}-Aktien verkauft: {amt}'],
+  nSellStockLoss: ['Sold {sym} shares at a loss: {amt}', '{sym}-Aktien mit Verlust verkauft: {amt}'],
+  nPaid: ['Paid for “{card}”', 'Bezahlt: „{card}“'],
+  nFinance: ['Bought on credit: “{card}”', 'Auf Pump gekauft: „{card}“'],
+  nBadTenant: ['A rent nomad cost 3 months of rent', 'Ein Mietnomade kostete 3 Monatsmieten'],
+  nBankrupt: ['Went bankrupt', 'Privatinsolvenz'],
+  nEscape: ['Escaped the hamster wheel! 🚀', 'Raus aus dem Hamsterrad! 🚀'],
+  nBuyBiz: ['Bought {fast} (+{cf}/month)', '{fast} gekauft (+{cf}/Monat)'],
+  nGambleWin: ['Won the gamble: {fast}', 'Wette gewonnen: {fast}'],
+  nGambleLose: ['Lost the gamble: {fast}', 'Wette verloren: {fast}'],
+  nLoseHalf: ['{fast}: lost half of the cash', '{fast}: die Hälfte des Bargelds verloren'],
+  nDivorce: ['Divorce: lost all cash', 'Scheidung: alles Bargeld verloren'],
+  nEtfSell: ['Sold the ETF: {amt}', 'ETF verkauft: {amt}'],
+  nEtfSellLoss: ['Sold the ETF at a loss: {amt}', 'ETF mit Verlust verkauft: {amt}'],
+
 };
 
 // Merge extra strings (coach) from other modules
@@ -340,80 +480,110 @@ export function addStrings(obj) { Object.assign(S, obj); }
 export const RULES = {
   en: `
 <h2>How to play Euro Flow</h2>
-<p><b>Goal:</b> escape the <b>hamster wheel</b> (inner circle) by making your <b>passive income</b> (rent, businesses, interest) bigger than your <b>monthly expenses</b>. Then you move onto the <b>fast track</b> (outer ring).</p>
-<p><b>Start:</b> everyone gets a random job and receives their monthly cash flow plus savings (savings are paid only once). Then everyone rolls one die – the highest number goes first (ties roll again). Play goes clockwise.</p>
+<p><b>Goal:</b> escape the <b>hamster wheel</b> (inner circle). You escape when your <b>passive income</b> (rent, businesses, dividends, ETF payouts) is bigger than your <b>escape target</b>: your living costs plus the health insurance you’d have to pay yourself without a job. Salary taxes and social insurance don’t count – without a job you don’t pay them. Then you move onto the <b>fast track</b> (outer ring).</p>
+<p><b>Start:</b> choose a game mode, everyone gets a random job and receives one month’s cash flow plus savings (savings only once). Everyone rolls one die – the highest number goes first (ties roll again). Play goes clockwise.</p>
+<h3>Game modes</h3>
+<ul>
+<li><b>Easy:</b> no taxes on sales, escape target = living costs. Good for learning.</li>
+<li><b>Classic:</b> German taxes on sales, tax advisor & depreciation, yearly events, health insurance in the escape target.</li>
+<li><b>Realistic Germany:</b> everything from Classic plus a home city (salary, rent and real-estate transfer tax by state), optional church tax and inflation.</li>
+</ul>
 <h3>Hamster wheel</h3>
 <ul>
 <li><b>Opportunity (green):</b> draw a small deal (up to €5,000) or a big deal (€6,000+). Buying is optional.</li>
-<li><b>Market (pink):</b> buyers for property, gold and businesses – or events. <i>Every</i> player who owns the matching thing may sell.</li>
-<li><b>Doodads (blue):</b> spending you must pay. If you lack cash, the bank automatically lends it.</li>
-<li><b>Payday (yellow):</b> landing on or passing it pays your monthly cash flow.</li>
+<li><b>Market (pink):</b> first the World ETF index moves (roll), then a market card: buyers for property, gold, crypto and businesses, interest-rate news or events. <i>Every</i> player who owns the matching thing may sell.</li>
+<li><b>Doodads (blue):</b> spending you must pay. If you lack cash, the bank lends it automatically.</li>
+<li><b>Payday (yellow):</b> landing on or passing it pays your monthly cash flow. Savings plans are paid in at the same time.</li>
 <li><b>Charity:</b> donate 10 % of your income → roll 1 or 2 dice for 3 turns.</li>
-<li><b>Baby:</b> higher expenses – but also child benefit (max. 3 children).</li>
-<li><b>Fired:</b> pay your expenses minus unemployment benefit and miss 2 turns.</li>
-<li><b>Bank loan:</b> any time in steps of €1,000, 10 % interest per month (game rule). Paying off debt lowers your expenses.</li>
+<li><b>Baby:</b> higher expenses – but also €255 Kindergeld (max. 3 children).</li>
+<li><b>Fired:</b> for 2 paydays you get unemployment benefit (60 % of net pay) instead of salary. Your investments keep paying.</li>
+<li><b>Bank loan:</b> any time in steps of €1,000, 10 % interest per month (game rule). Paying off debt lowers your living costs.</li>
+</ul>
+<h3>Time: 1 lap = 1 year</h3>
+<ul>
+<li>Every time you pass START a new year begins: Christmas bonus (Weihnachtsgeld), tax refund (bigger with a tax advisor), utility bill settlement (Nebenkostenabrechnung – roll: back-payment, nothing or refund), new €1,000 tax-free allowance. In Realistic mode living costs rise 2 % (inflation).</li>
+<li><b>Speculation period:</b> property sold at a profit within 4 laps (stands for the real 10 years) is taxed at your personal tax rate; afterwards it’s tax-free. Gold and crypto: 1 lap.</li>
+</ul>
+<h3>Taxes & German money tools</h3>
+<ul>
+<li><b>Income tax</b> is calculated with the real 2025 German formula (§32a EStG) – high earners reach 42 %. Soli only applies to very high incomes; church tax 8–9 % if you are a member (Realistic).</li>
+<li><b>Tax advisor:</b> hire one in your statement (€1,500 once, €80/month). Then the depreciation (AfA, 2 % of the building value per year, 9 % for listed buildings) lowers your income tax every month – the higher your tax rate, the more you save.</li>
+<li><b>Purchase costs:</b> real-estate transfer tax (3.5–6.5 % depending on the state) + 2 % notary and land register.</li>
+<li><b>Stocks:</b> 26.375 % capital gains tax above the €1,000 yearly allowance.</li>
+<li><b>ETF savings plan:</b> invests a fixed amount every payday; you receive 4 % of the value per year as passive income. Selling: 30 % of the gain is tax-free (Teilfreistellung).</li>
+<li><b>Bausparvertrag:</b> save €150 per payday; from €3,000 it is ready – buy a building with it and get a cheap building loan (1 %/month instead of 10 %).</li>
+<li><b>Crypto:</b> tax-free after 1 year; before that, gains above €1,000 a year are taxed.</li>
+<li><b>Interest rates (ECB):</b> low rates raise property prices on buyer cards, high rates lower them.</li>
+<li><b>Rent nomad:</b> a tenant stops paying – that property earns nothing for 3 paydays (evictions take months in Germany).</li>
+<li><b>Quitting:</b> if you quit yourself you get a Sperrzeit (3 paydays without salary or benefit), then a better-paid job.</li>
+<li><b>Personal insolvency:</b> can’t pay on payday? The bank takes your assets at half your investment, remaining debt is forgiven, you miss 3 turns.</li>
 </ul>
 <h3>Fast track</h3>
 <ul>
-<li>You give your rat-race cash back to the bank and start with your buyout: <b>100 × your passive income</b>. That is also your Euro Flow Day income.</li><li>Roll 2 dice. Landing on or passing <b>Euro Flow Day</b> pays your income.</li><li>Buy a green business and your token goes on it. If another player lands on <b>your</b> business, they pay you <b>€50,000</b>.</li><li>You may buy other free dreams too (“don’t limit yourself to one dream”) – but only <b>your own</b> dream wins.</li>
+<li>You give your rat-race cash back to the bank and start with your buyout: <b>100 × your passive income</b>. That is also your Euro Flow Day income. Roll 2 dice.</li>
 <li>You win by <b>buying your dream ★</b> or adding <b>€50,000</b> monthly income (buy green businesses).</li>
-<li>Landing on someone else’s dream makes it more expensive for them. Lawsuit & tax audit cost half your cash, divorce all of it.</li><li><b>Charity</b> (foundation): pay €100,000 and choose 1, 2 or 3 dice for the rest of the game.</li>
+<li>If another player lands on <b>your</b> business, they pay you €50,000. You may buy other free dreams too – but only your own dream wins.</li>
+<li>Landing on someone else’s dream makes it more expensive for them. Lawsuit & tax audit cost half your cash, divorce all of it. Foundation: €100,000 → choose 1, 2 or 3 dice.</li>
 </ul>
-<h3>🇩🇪 The German system in the game</h3>
+<h3>🤖 Computer players, 🐹 coach & report</h3>
 <ul>
-<li><b>Gross & net:</b> income tax/solidarity surcharge and social insurance come off your salary. Civil servants (Beamte) pay private health insurance instead.</li>
-<li><b>Renting instead of a mortgage:</b> most Germans rent. Rent can’t be paid off – index rent can even go up.</li>
-<li><b>7 % purchase costs:</b> real-estate transfer tax, notary and land register are added when buying property.</li>
-<li><b>Speculation period:</b> sell property at a profit within 10 years (120 paydays) and you pay tax (simplified 30 %). For gold it’s 1 year.</li>
-<li><b>Capital gains tax:</b> stock profits cost 26.375 % (25 % + Soli). €1,000 per year is tax-free (Sparerpauschbetrag).</li>
-<li><b>Child benefit (Kindergeld):</b> €255 per child per month.</li>
-<li><b>Unemployment benefit I:</b> 60 % of net pay if you are fired.</li>
-<li><b>BAföG, Dispo, 0 % financing:</b> typical German debts on your financial statement.</li>
-<li><b>Personal insolvency:</b> can’t pay on payday? The bank takes your assets at half your investment, remaining debt is forgiven, you miss 3 turns.</li>
+<li><b>Easy</b> plays loosely, <b>medium</b> plays solidly, <b>hard</b> plays like an experienced human (careful with loans, uses the tax advisor and Bausparvertrag, waits out the speculation period).</li>
+<li>The <b>coach</b> explains every card, what just happened, your options, a tip – and the German law behind it.</li>
+<li>At the end you see a <b>net-worth chart</b>, the ranking and every player’s best and worst move.</li>
 </ul>
-<h3>🤖 Computer players & 🐹 coach</h3>
-<ul>
-<li><b>Easy</b> plays loosely, <b>medium</b> plays solidly, <b>hard</b> plays like an experienced human: careful with loans, sells at the right time, pays off expensive debt.</li>
-<li>The <b>coach</b> explains every card, what just happened and which options you have. Turn it on or off any time (top bar).</li>
-</ul>
-<p class="fine">Euro Flow is an independent learning game inspired by classic money board games. All companies and numbers are fictional or simplified and are not tax or investment advice.</p>`,
+<p class="fine">Euro Flow is an independent learning game inspired by classic money board games. All companies are fictional; tax rules are simplified (e.g. rental income on cards is shown after tax) and are not tax or investment advice.</p>`,
   de: `
 <h2>So spielst du Euro Flow</h2>
-<p><b>Ziel:</b> Raus aus dem <b>Hamsterrad</b> (innerer Kreis) – indem dein <b>passives Einkommen</b> (Mieten, Unternehmen, Zinsen) größer ist als deine <b>monatlichen Ausgaben</b>. Danach geht’s auf die <b>Überholspur</b> (äußerer Ring).</p>
-<p><b>Start:</b> Jeder bekommt einen zufälligen Beruf und erhält seinen monatlichen Cashflow plus Ersparnisse (Ersparnisse gibt es nur einmal). Dann würfeln alle einmal – die höchste Zahl beginnt (bei Gleichstand wird neu gewürfelt). Gespielt wird im Uhrzeigersinn.</p>
+<p><b>Ziel:</b> Raus aus dem <b>Hamsterrad</b> (innerer Kreis). Du kommst raus, wenn dein <b>passives Einkommen</b> (Mieten, Unternehmen, Dividenden, ETF-Auszahlungen) größer ist als dein <b>Ausstiegsziel</b>: deine Lebenshaltungskosten plus die Krankenversicherung, die du ohne Job selbst zahlen müsstest. Lohnsteuer und Sozialabgaben zählen nicht – ohne Job zahlst du sie nicht. Danach geht es auf die <b>Überholspur</b> (äußerer Ring).</p>
+<p><b>Start:</b> Spielmodus wählen, jeder bekommt einen zufälligen Beruf und erhält einen Monats-Cashflow plus Ersparnisse (Ersparnisse nur einmal). Alle würfeln einmal – die höchste Zahl beginnt (bei Gleichstand wird neu gewürfelt). Gespielt wird im Uhrzeigersinn.</p>
+<h3>Spielmodi</h3>
+<ul>
+<li><b>Einfach:</b> keine Steuern auf Verkäufe, Ausstiegsziel = Lebenshaltungskosten. Gut zum Lernen.</li>
+<li><b>Klassisch:</b> Steuern auf Verkäufe, Steuerberater & Abschreibung, jährliche Ereignisse, Krankenversicherung im Ausstiegsziel.</li>
+<li><b>Realistisches Deutschland:</b> alles aus „Klassisch“ plus Heimatstadt (Gehalt, Miete und Grunderwerbsteuer je Bundesland), optionale Kirchensteuer und Inflation.</li>
+</ul>
 <h3>Hamsterrad</h3>
 <ul>
 <li><b>Chance (grün):</b> Ziehe einen kleinen Deal (bis 5.000 €) oder großen Deal (ab 6.000 €). Kaufen ist freiwillig.</li>
-<li><b>Markt (pink):</b> Käufer für Immobilien, Gold & Firmen – oder Ereignisse. <i>Alle</i> Spieler, die das Passende besitzen, dürfen verkaufen.</li>
+<li><b>Markt (pink):</b> Erst bewegt sich der Welt-ETF-Index (Würfel), dann kommt eine Marktkarte: Käufer für Immobilien, Gold, Krypto und Firmen, Zinsnachrichten oder Ereignisse. <i>Alle</i> Spieler, die das Passende besitzen, dürfen verkaufen.</li>
 <li><b>Schnickschnack (blau):</b> Konsumausgaben – müssen bezahlt werden. Fehlt Geld, gibt die Bank automatisch einen Kredit.</li>
-<li><b>Zahltag (gelb):</b> Beim Landen oder Überqueren bekommst du deinen monatlichen Cashflow.</li>
+<li><b>Zahltag (gelb):</b> Beim Landen oder Überqueren bekommst du deinen monatlichen Cashflow. Gleichzeitig werden Sparpläne eingezahlt.</li>
 <li><b>Spende:</b> 10 % deines Einkommens spenden → 3 Runden mit 1 oder 2 Würfeln.</li>
-<li><b>Baby:</b> Mehr Ausgaben – aber auch Kindergeld (max. 3 Kinder).</li>
-<li><b>Gekündigt:</b> Du zahlst deine Ausgaben minus Arbeitslosengeld und setzt 2 Runden aus.</li>
-<li><b>Bankkredit:</b> Jederzeit in 1.000-€-Schritten, 10 % Zinsen pro Monat (Spielregel). Schulden ablösen senkt deine Ausgaben.</li>
+<li><b>Baby:</b> Mehr Ausgaben – aber auch 255 € Kindergeld (max. 3 Kinder).</li>
+<li><b>Gekündigt:</b> 2 Zahltage lang bekommst du Arbeitslosengeld I (60 % vom Netto) statt Gehalt. Deine Investitionen zahlen weiter.</li>
+<li><b>Bankkredit:</b> Jederzeit in 1.000-€-Schritten, 10 % Zinsen pro Monat (Spielregel). Schulden ablösen senkt deine Lebenshaltungskosten.</li>
+</ul>
+<h3>Zeit: 1 Runde = 1 Jahr</h3>
+<ul>
+<li>Jedes Mal, wenn du über START ziehst, beginnt ein neues Jahr: Weihnachtsgeld, Steuererstattung (höher mit Steuerberater), Nebenkostenabrechnung (Würfel: Nachzahlung, nichts oder Guthaben), neuer Freibetrag von 1.000 €. Im Modus „Realistisch“ steigen die Lebenshaltungskosten um 2 % (Inflation).</li>
+<li><b>Spekulationsfrist:</b> Verkaufst du eine Immobilie innerhalb von 4 Runden (stehen für die echten 10 Jahre) mit Gewinn, wird er mit deinem persönlichen Steuersatz versteuert; danach steuerfrei. Gold und Krypto: 1 Runde.</li>
+</ul>
+<h3>Steuern & deutsche Finanzwerkzeuge</h3>
+<ul>
+<li><b>Lohnsteuer</b> wird mit der echten Formel 2025 berechnet (§32a EStG) – hohe Einkommen erreichen 42 %. Soli zahlen nur sehr hohe Einkommen; Kirchensteuer 8–9 %, wenn du Mitglied bist (Realistisch).</li>
+<li><b>Steuerberater:</b> im Finanzbericht beauftragen (1.500 € einmalig, 80 €/Monat). Dann senkt die Abschreibung (AfA, 2 % des Gebäudewerts pro Jahr, 9 % bei Denkmalschutz) jeden Monat deine Lohnsteuer – je höher dein Steuersatz, desto mehr sparst du.</li>
+<li><b>Kaufnebenkosten:</b> Grunderwerbsteuer (3,5–6,5 % je Bundesland) + 2 % Notar und Grundbuch.</li>
+<li><b>Aktien:</b> 26,375 % Abgeltungsteuer über dem Freibetrag von 1.000 € pro Jahr.</li>
+<li><b>ETF-Sparplan:</b> investiert jeden Zahltag einen festen Betrag; 4 % des Werts pro Jahr bekommst du als passives Einkommen. Beim Verkauf sind 30 % des Gewinns steuerfrei (Teilfreistellung).</li>
+<li><b>Bausparvertrag:</b> 150 € pro Zahltag sparen; ab 3.000 € zuteilungsreif – damit eine Immobilie kaufen und ein günstiges Bauspardarlehen bekommen (1 %/Monat statt 10 %).</li>
+<li><b>Krypto:</b> nach 1 Jahr steuerfrei; davor werden Gewinne über 1.000 € im Jahr versteuert.</li>
+<li><b>Zinsen (EZB):</b> Niedrige Zinsen erhöhen die Immobilienpreise auf Käuferkarten, hohe senken sie.</li>
+<li><b>Mietnomade:</b> Ein Mieter zahlt nicht – die Immobilie bringt 3 Zahltage lang nichts (Räumungen dauern in Deutschland Monate).</li>
+<li><b>Selbst kündigen:</b> Dann gibt es eine Sperrzeit (3 Zahltage ohne Gehalt und Arbeitslosengeld), danach einen besser bezahlten Job.</li>
+<li><b>Privatinsolvenz:</b> Kannst du am Zahltag nicht zahlen, übernimmt die Bank deine Vermögenswerte zum halben Einsatz, Restschulden werden erlassen, du setzt 3 Runden aus.</li>
 </ul>
 <h3>Überholspur</h3>
 <ul>
-<li>Du gibst dein Bargeld aus dem Hamsterrad an die Bank zurück und startest mit deiner Auszahlung: <b>100 × dein passives Einkommen</b>. Das ist auch dein Euro-Flow-Tag-Einkommen.</li><li>Du würfelst mit 2 Würfeln. Beim Landen auf oder Überqueren des <b>Euro-Flow-Tags</b> bekommst du dein Einkommen.</li><li>Kaufst du ein grünes Unternehmen, kommt deine Marke drauf. Landet ein anderer Spieler auf <b>deinem</b> Unternehmen, zahlt er dir <b>50.000 €</b>.</li><li>Du darfst auch andere freie Träume kaufen („beschränke dich nicht auf einen Traum“) – gewinnen tut aber nur <b>dein eigener</b> Traum.</li>
+<li>Du gibst dein Bargeld aus dem Hamsterrad an die Bank zurück und startest mit deiner Auszahlung: <b>100 × dein passives Einkommen</b>. Das ist auch dein Euro-Flow-Tag-Einkommen. Du würfelst mit 2 Würfeln.</li>
 <li>Du gewinnst, wenn du <b>deinen Traum ★ kaufst</b> oder dein Einkommen um <b>50.000 €</b> steigerst (grüne Unternehmen kaufen).</li>
-<li>Landest du auf dem Traum eines anderen, wird er für ihn teurer. Klage & Betriebsprüfung kosten die Hälfte deines Bargelds, Scheidung alles.</li><li><b>Spende</b> (Stiftung): 100.000 € zahlen und für den Rest des Spiels 1, 2 oder 3 Würfel wählen.</li>
+<li>Landet ein anderer auf <b>deinem</b> Unternehmen, zahlt er dir 50.000 €. Du darfst auch andere freie Träume kaufen – gewinnen tut aber nur dein eigener.</li>
+<li>Landest du auf dem Traum eines anderen, wird er für ihn teurer. Klage & Betriebsprüfung kosten die Hälfte deines Bargelds, Scheidung alles. Stiftung: 100.000 € → 1, 2 oder 3 Würfel wählen.</li>
 </ul>
-<h3>🇩🇪 Das deutsche System im Spiel</h3>
+<h3>🤖 Computer-Gegner, 🐹 Coach & Auswertung</h3>
 <ul>
-<li><b>Brutto & Netto:</b> Vom Gehalt gehen Lohnsteuer/Soli und Sozialversicherung ab. Beamte zahlen keine Sozialversicherung, aber private Krankenversicherung.</li>
-<li><b>Miete statt Hauskredit:</b> Die meisten Deutschen wohnen zur Miete. Miete kann man nicht „abbezahlen“ – Indexmiete kann sogar steigen.</li>
-<li><b>Kaufnebenkosten 7 %:</b> Grunderwerbsteuer, Notar und Grundbuch kommen beim Immobilienkauf obendrauf.</li>
-<li><b>Spekulationsfrist:</b> Verkaufst du eine Immobilie innerhalb von 10 Jahren (120 Zahltage) mit Gewinn, zahlst du Steuern (vereinfacht 30 %). Bei Gold gilt 1 Jahr.</li>
-<li><b>Abgeltungsteuer:</b> Aktiengewinne kosten 26,375 % (25 % + Soli). Pro Jahr sind 1.000 € steuerfrei (Sparerpauschbetrag).</li>
-<li><b>Kindergeld:</b> 255 € pro Kind und Monat.</li>
-<li><b>Arbeitslosengeld I:</b> 60 % vom Netto, wenn du gekündigt wirst.</li>
-<li><b>BAföG, Dispo, 0 %-Finanzierung:</b> typisch deutsche Schulden auf deinem Finanzbericht.</li>
-<li><b>Privatinsolvenz:</b> Kannst du am Zahltag nicht zahlen, übernimmt die Bank deine Vermögenswerte zum halben Einsatz, Restschulden werden erlassen, du setzt 3 Runden aus.</li>
+<li><b>Leicht</b> spielt locker, <b>Mittel</b> solide, <b>Schwer</b> wie ein erfahrener Mensch (vorsichtig mit Krediten, nutzt Steuerberater und Bausparvertrag, wartet die Spekulationsfrist ab).</li>
+<li>Der <b>Coach</b> erklärt jede Karte, was gerade passiert ist, deine Möglichkeiten, einen Tipp – und das deutsche Gesetz dahinter.</li>
+<li>Am Ende siehst du eine <b>Vermögenskurve</b>, die Rangliste und den besten und schlechtesten Zug jedes Spielers.</li>
 </ul>
-<h3>🤖 Computer-Gegner & 🐹 Coach</h3>
-<ul>
-<li><b>Leicht</b> spielt locker, <b>Mittel</b> solide, <b>Schwer</b> wie ein erfahrener Mensch: vorsichtig mit Krediten, verkauft im richtigen Moment, löst teure Schulden ab.</li>
-<li>Der <b>Coach</b> erklärt jede Karte, was gerade passiert ist und welche Möglichkeiten du hast. Jederzeit oben an- und ausschaltbar.</li>
-</ul>
-<p class="fine">Euro Flow ist ein eigenständiges Lernspiel, inspiriert von klassischen Finanz-Brettspielen. Alle Firmen und Zahlen sind fiktiv bzw. vereinfacht und keine Steuer- oder Anlageberatung.</p>`,
+<p class="fine">Euro Flow ist ein eigenständiges Lernspiel, inspiriert von klassischen Finanz-Brettspielen. Alle Firmen sind fiktiv; Steuerregeln sind vereinfacht (z. B. sind Mieteinnahmen auf den Karten nach Steuern angegeben) und keine Steuer- oder Anlageberatung.</p>`,
 };

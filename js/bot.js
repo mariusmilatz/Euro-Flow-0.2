@@ -1,24 +1,42 @@
 // Euro Flow – computer players.
 // easy: loose and random · medium: solid, no risks · hard: plays like an experienced human.
 // The decide*() functions also power the coach's "a pro would …" tips (always at level 'hard').
-import { FAST } from './data.js';
-import { cardOf, cashflow, totalExpenses, totalIncome, sellable, saleNet, buyCost, dreamCost, M } from './engine.js';
+import { FAST, ADVISOR_FEE, ADVISOR_MONTH } from './data.js';
+import {
+  cardOf, cashflow, totalIncome, livingCosts, sellable, saleNet, buyCost, dreamCost, M, BUILDINGS,
+  bausparOf, etfOf, afaPotential, saleTax,
+} from './engine.js';
 
 const rnd = () => Math.random();
 const LOW = { AWK: 5, SOL: 10, PHN: 10, TEK: 5, WLT: 10 };
 const HIGH = { AWK: 20, SOL: 20, PHN: 20, TEK: 20, WLT: 30 };
-const reserveOf = (p, lvl) => (lvl === 'hard' ? 1000 : lvl === 'medium' ? 2000 : 500);
+const reserveOf = lvl => (lvl === 'hard' ? 1000 : lvl === 'medium' ? 2000 : 500);
+const round50 = n => Math.max(100, Math.round(n / 50) * 50);
 
 // ---- Buying a card ----
 export function decideBuy(s, p, card, lvl = 'hard') {
-  const spare = p.cash - reserveOf(p, lvl);
+  const spare = p.cash - reserveOf(lvl);
+  const cf = cashflow(p, s);
   if (card.type === 'stock') {
     const cheap = card.price <= (lvl === 'medium' ? 5 : LOW[card.sym]);
-    let share = lvl === 'hard' ? 0.7 : lvl === 'medium' ? 0.4 : 0.3;
-    const qtyOf = () => { const q = Math.floor(spare * share / card.price); return q >= 100 ? Math.floor(q / 100) * 100 : Math.floor(q / 10) * 10; };
-    if (lvl === 'easy') return card.price <= 10 && rnd() < 0.5 && qtyOf() > 0 ? { yes: true, qty: qtyOf() } : { yes: false };
-    if (cheap && qtyOf() > 0) return { yes: true, qty: qtyOf(), why: 'tipStockBuy', params: { high: M(HIGH[card.sym]) } };
+    const share = lvl === 'hard' ? 0.7 : lvl === 'medium' ? 0.4 : 0.3;
+    const q = Math.floor(spare * share / card.price);
+    const qty = q >= 100 ? Math.floor(q / 100) * 100 : Math.floor(q / 10) * 10;
+    if (lvl === 'easy') return card.price <= 10 && rnd() < 0.5 && qty > 0 ? { yes: true, qty } : { yes: false };
+    if (cheap && qty > 0) return { yes: true, qty, why: 'tipStockBuy', params: { high: M(HIGH[card.sym]) } };
     return { yes: false, why: cheap ? 'tipNoCash' : 'tipStockSkip' };
+  }
+  if (card.type === 'etfplan') {
+    const e = etfOf(p);
+    const amt = round50(cf * (lvl === 'hard' ? 0.25 : 0.15));
+    if (lvl === 'easy') return rnd() < 0.5 && cf > 300 ? { yes: true, qty: 100 } : { yes: false };
+    if (cf > 500 && (!e || e.monthly < cf * 0.3)) return { yes: true, qty: amt, why: 'tipEtfYes', params: { amt: M(amt) } };
+    return { yes: false, why: 'tipEtfNo' };
+  }
+  if (card.type === 'bauspar') {
+    if (lvl === 'easy') return { yes: rnd() < 0.3 && cf > 300 };
+    const yes = cf > 500 && !bausparOf(p) && (lvl === 'hard' || rnd() < 0.5);
+    return { yes, why: yes ? 'tipBausparYes' : 'tipBausparNo' };
   }
   if (card.type !== 'asset') return { yes: false };
   const down = buyCost(card);
@@ -27,9 +45,10 @@ export function decideBuy(s, p, card, lvl = 'hard') {
     return { yes: false };
   }
   if (card.kind === 'bond') return { yes: false, why: 'tipBond' };
-  if (card.kind === 'gold') {
-    if (lvl === 'hard' && spare - down >= 3000) return { yes: true, why: 'tipGoldBuy' };
-    return { yes: false, why: 'tipGoldSkip' };
+  if (card.kind === 'coop') return lvl === 'medium' && spare - down >= 2000 ? { yes: true } : { yes: false, why: 'tipCoop' };
+  if (card.kind === 'gold' || card.kind === 'crypto') {
+    if (lvl === 'hard' && spare - down >= 3000) return { yes: true, why: card.kind === 'gold' ? 'tipGoldBuy' : 'tipCryptoBuy' };
+    return { yes: false, why: card.kind === 'gold' ? 'tipGoldSkip' : 'tipCryptoSkip' };
   }
   if (card.kind === 'land') {
     if (lvl === 'hard' && spare - down >= (down > 10000 ? 10000 : 2000)) return { yes: true, why: 'tipLandBuy' };
@@ -37,7 +56,9 @@ export function decideBuy(s, p, card, lvl = 'hard') {
   }
   if (card.cf <= 0) return { yes: false, why: 'tipSkipNeg' };
   const roi = card.cf * 12 / down;
-  const need = Math.max(0, down - spare);
+  const b = bausparOf(p);
+  const bauspar = b && b.ready && BUILDINGS.includes(card.kind) ? b.balance * 3 : 0;
+  const need = Math.max(0, down - spare - bauspar);
   const loan = Math.ceil(need / 1000) * 1000;
   const interest = loan / 10;
   const roiPct = Math.round(roi * 100);
@@ -45,10 +66,10 @@ export function decideBuy(s, p, card, lvl = 'hard') {
   if (loan) {
     if (lvl === 'medium' && loan > 2000) return { yes: false, why: 'tipNoCash' };
     if (card.cf - interest <= 0) return { yes: false, why: 'tipSkipLoan', params: { int: M(interest), cf: M(card.cf) } };
-    if (cashflow(p) + card.cf - interest <= 0) return { yes: false, why: 'tipSkipCash' };
-    return { yes: true, why: 'tipBuyLoanOk', params: { loan: M(loan), cf: M(card.cf), int: M(interest) } };
+    if (cf + card.cf - interest <= 0) return { yes: false, why: 'tipSkipCash' };
+    return { yes: true, bauspar: !!bauspar, why: 'tipBuyLoanOk', params: { loan: M(loan), cf: M(card.cf), int: M(interest) } };
   }
-  return { yes: true, why: 'tipBuyGood', params: { roi: roiPct } };
+  return { yes: true, bauspar: !!bauspar, why: bauspar ? 'tipUseBauspar' : 'tipBuyGood', params: { roi: roiPct } };
 }
 
 // ---- Selling into a market / stock card ----
@@ -60,30 +81,47 @@ export function decideSell(s, p, card, a, lvl = 'hard') {
     const yes = card.price >= HIGH[card.sym] && card.price > avg * 1.5;
     return { yes, why: yes ? 'tipStockSell' : 'tipStockHold', params: { high: M(HIGH[card.sym]) } };
   }
-  const net = saleNet(p, card, a);
+  const net = saleNet(p, card, a, s);
   if (lvl === 'easy') return { yes: net > 0 && rnd() < 0.5 };
   const base = a.down || a.price || 1;
   const months = a.cf > 0 ? Math.round(net / a.cf) : 999;
+  const tax = saleTax(p, card, a, undefined, s).tax;
+  // a pro waits for the speculation period when the tax bite is big and the price only so-so
+  if (lvl === 'hard' && tax > net * 0.3 && net < base * 4) return { yes: false, why: 'tipWaitTax', params: { tax: M(tax) } };
   const yes = lvl === 'hard' ? net > Math.max(base * 2, a.cf * 36) : net > base * 1.5 && net > a.cf * 24;
   return { yes, why: yes ? 'tipSellYes' : 'tipSellNo', params: { net: M(net), months } };
 }
 
 export function decideDeal(p, lvl = 'hard') {
-  const spare = p.cash - reserveOf(p, lvl);
+  const spare = p.cash - reserveOf(lvl);
   if (lvl === 'easy') return spare >= 40000 ? 'big' : 'small';
   if (lvl === 'medium') return spare >= 25000 ? 'big' : 'small';
-  return spare >= 15000 || (spare >= 8000 && cashflow(p) >= 1000) ? 'big' : 'small';
+  return spare >= 15000 || (spare >= 8000 && p.cash > 0) ? 'big' : 'small';
 }
 
-export function decideCharity(p, lvl = 'hard') {
-  const amt = Math.round(totalIncome(p) * 0.1);
+export function decideCharity(s, p, lvl = 'hard') {
+  const amt = Math.round(totalIncome(p, s) * 0.1);
   if (p.cash < amt) return false;
   if (lvl === 'easy') return rnd() < 0.4;
   if (lvl === 'medium') return p.cash >= amt * 3 && rnd() < 0.7;
   return p.cash - amt >= 3000;
 }
 
-// Best debt to pay off right now (hard), or null
+export function decideChoice(s, p, lvl = 'hard') {
+  if (lvl === 'easy') return rnd() < 0.5 ? 'quit' : 'stay';
+  if (lvl === 'medium') return 'stay';
+  return p.cash > livingCosts(p) * 3 ? 'quit' : 'stay';
+}
+
+// Should this player hire a tax advisor? (returns monthly saving if worth it)
+export function advisorWorth(s, p, lvl = 'hard') {
+  if (p.advisor || p.track !== 'rat' || lvl === 'easy') return 0;
+  const save = afaPotential(p, s);
+  const need = lvl === 'hard' ? ADVISOR_MONTH + 40 : 200;
+  return save > need && p.cash >= ADVISOR_FEE + 1000 ? save : 0;
+}
+
+// Best debt to pay off right now, or null
 export function debtToPay(p, lvl = 'hard') {
   if (lvl === 'easy' || p.track !== 'rat') return null;
   const reserve = lvl === 'hard' ? 3000 : 5000;
@@ -92,7 +130,7 @@ export function debtToPay(p, lvl = 'hard') {
     if (amt >= 1000) return { which: 'loan', amount: amt };
   }
   if (lvl !== 'hard') return null;
-  const opts = Object.entries(p.debts).filter(([k, d]) => d.bal && k !== 'baufi' && d.pay / d.bal >= 0.025 && d.bal <= p.cash - 8000)
+  const opts = Object.entries(p.debts).filter(([k, d]) => d.bal && k !== 'baufi' && k !== 'bauspar' && d.pay / d.bal >= 0.025 && d.bal <= p.cash - 8000)
     .sort((x, y) => y[1].pay / y[1].bal - x[1].pay / x[1].bal);
   return opts.length ? { which: opts[0][0], amount: 0 } : null;
 }
@@ -120,21 +158,25 @@ export function botAction(s, p) {
   if (s.phase !== 'play' || s.players[s.turn].id !== p.id) return null;
   switch (s.step) {
     case 'roll': {
-      const debt = p.skip ? null : debtToPay(p, lvl);
-      if (debt) return { type: 'repay', pid: p.id, ...debt };
+      if (!p.skip) {
+        if (advisorWorth(s, p, lvl)) return { type: 'advisor', pid: p.id, on: true };
+        const debt = debtToPay(p, lvl);
+        if (debt) return { type: 'repay', pid: p.id, ...debt };
+      }
       const dice = p.track === 'rat' ? (p.charity > 0 ? (lvl === 'easy' && rnd() < 0.5 ? 1 : 2) : undefined) : fastDiceFor(p, lvl);
       return { type: 'roll', pid: p.id, dice };
     }
     case 'deal': return { type: 'deal', pid: p.id, deck: decideDeal(p, lvl) };
     case 'card': {
       const card = cardOf(s.card);
-      if (!s.card.done && s.card.by === p.id && (card.type === 'asset' || card.type === 'stock')) {
+      if (card.type === 'choice' && !s.card.done) return { type: 'choose', pid: p.id, opt: decideChoice(s, p, lvl) };
+      if (!s.card.done && s.card.by === p.id && ['asset', 'stock', 'etfplan', 'bauspar'].includes(card.type)) {
         const d = decideBuy(s, p, card, lvl);
-        if (d.yes) return { type: 'buy', pid: p.id, qty: d.qty };
+        if (d.yes) return { type: 'buy', pid: p.id, qty: d.qty, useBauspar: lvl !== 'easy' && !!d.bauspar };
       }
       return { type: 'endTurn', pid: p.id };
     }
-    case 'charity': return { type: 'charity', pid: p.id, accept: decideCharity(p, lvl) };
+    case 'charity': return { type: 'charity', pid: p.id, accept: decideCharity(s, p, lvl) };
     case 'fast': return decideFast(s, p, lvl) ? { type: 'fastBuy', pid: p.id } : { type: 'endTurn', pid: p.id };
     default: return { type: 'endTurn', pid: p.id };
   }
@@ -147,5 +189,3 @@ export function botSells(s, p) {
   return p.assets.filter(a => sellable(card, a) && decideSell(s, p, card, a, p.bot).yes)
     .map(a => ({ type: 'sell', pid: p.id, assetId: a.id, qty: a.shares }));
 }
-
-export { totalExpenses };

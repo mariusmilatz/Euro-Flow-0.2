@@ -1,9 +1,10 @@
 // Euro Flow – the coach 🐹: explains the card, what just happened and which options you have.
 import { FAST, RAT, STOCKS, KINDERGELD } from './data.js';
 import {
-  cardOf, passive, totalExpenses, totalIncome, cashflow, sellable, saleNet, saleTax, darlehen, buyCost, dreamCost,
+  cardOf, passive, escapeTarget, livingCosts, healthCost, totalIncome, cashflow, sellable, saleNet, saleTax, darlehen, buyCost, dreamCost,
+  R, working, algAmount, BUILDINGS, IMMO, bausparOf,
 } from './engine.js';
-import { decideBuy, decideSell, decideDeal, decideCharity, debtToPay, decideFast } from './bot.js';
+import { decideBuy, decideSell, decideDeal, decideCharity, debtToPay, decideFast, decideChoice, advisorWorth } from './bot.js';
 import { t, fmt, logLine, fastName, fastText, assetName, addStrings } from './i18n.js';
 
 addStrings({
@@ -16,7 +17,7 @@ addStrings({
   cNotYourTurn: ['It’s {name}’s turn. Keep an eye on market cards: if a buyer appears for something you own, you can sell even when it’s not your turn.', '{name} ist am Zug. Achte auf Marktkarten: Taucht ein Käufer für etwas auf, das dir gehört, darfst du auch außerhalb deines Zuges verkaufen.'],
   cOrder: ['Everyone rolls one die. The highest number starts, ties roll again. After that you play clockwise.', 'Alle würfeln einmal. Die höchste Zahl beginnt, bei Gleichstand wird neu gewürfelt. Danach geht es im Uhrzeigersinn weiter.'],
   oOrderRoll: ['<b>Roll</b> – see if you go first.', '<b>Würfeln</b> – schau, ob du anfängst.'],
-  cGoalRat: ['Your goal: passive income bigger than your expenses. Now: {pas} passive vs. {exp} expenses – you need {gap} more per month. Every asset with positive cash flow brings you closer.', 'Dein Ziel: passives Einkommen größer als deine Ausgaben. Jetzt: {pas} passiv gegen {exp} Ausgaben – es fehlen noch {gap} pro Monat. Jeder Vermögenswert mit positivem Cashflow bringt dich näher.'],
+  cGoalRat: ['Your goal: passive income bigger than your escape target (living costs + self-paid health insurance – salary taxes don’t count, because without a job you don’t pay them). Now: {pas} passive vs. {exp} target – you need {gap} more per month.', 'Dein Ziel: passives Einkommen größer als dein Ausstiegsziel (Lebenshaltung + selbst bezahlte Krankenversicherung – Lohnsteuer und Sozialabgaben zählen nicht, denn ohne Job zahlst du sie nicht). Jetzt: {pas} passiv gegen {exp} Ziel – es fehlen noch {gap} pro Monat.'],
   cGoalFast: ['You’re on the fast track! Win by buying your dream ({dream}, now {cost}) or by adding €50,000 to your monthly income (so far +{have}).', 'Du bist auf der Überholspur! Gewinne, indem du deinen Traum kaufst ({dream}, jetzt {cost}) oder dein Monatseinkommen um 50.000 € steigerst (bisher +{have}).'],
   oRoll: ['<b>Roll</b> – move clockwise. Passing <i>Payday</i> pays you {cf}.', '<b>Würfeln</b> – im Uhrzeigersinn ziehen. Über den <i>Zahltag</i> gibt es {cf}.'],
   oRollFast: ['<b>Roll</b> – 2 dice on the fast track. Passing <i>Euro Flow Day</i> pays {amt}.', '<b>Würfeln</b> – 2 Würfel auf der Überholspur. Über den <i>Euro-Flow-Tag</i> gibt es {amt}.'],
@@ -56,7 +57,7 @@ addStrings({
   tipCharityNo: ['A pro would keep the cash for now – you need it for deals.', 'Ein Profi würde das Geld jetzt behalten – du brauchst es für Deals.'],
   ePayday: ['<b>Payday!</b> You received your monthly cash flow: salary + passive income − expenses = {cf}.', '<b>Zahltag!</b> Du bekommst deinen monatlichen Cashflow: Gehalt + passives Einkommen − Ausgaben = {cf}.'],
   eBaby: ['<b>Baby!</b> Each child costs {per}/month but brings {kg} Kindergeld. Net: {net}/month.', '<b>Baby!</b> Jedes Kind kostet {per}/Monat, bringt aber {kg} Kindergeld. Netto: {net}/Monat.'],
-  eFired: ['<b>Fired!</b> You paid one month of expenses minus unemployment benefit (Arbeitslosengeld I = 60 % of your net pay) and miss 2 turns. Passive income protects you from this – it keeps flowing without a job.', '<b>Gekündigt!</b> Du hast einen Monat Ausgaben minus Arbeitslosengeld I (60 % vom Netto) bezahlt und setzt 2 Runden aus. Passives Einkommen schützt dich davor – es fließt auch ohne Job.'],
+  eFired: ['<b>Fired!</b> For the next 2 paydays you get unemployment benefit (Arbeitslosengeld I = 60 % of your net pay) instead of your salary. No taxes or social insurance on it, and your investments keep paying. That’s why passive income protects you.', '<b>Gekündigt!</b> Die nächsten 2 Zahltage bekommst du Arbeitslosengeld I (60 % vom Netto) statt Gehalt – ohne Steuern und Sozialabgaben, und deine Investitionen zahlen weiter. Darum schützt dich passives Einkommen.'],
   eEndGeneric: ['Your move is done. You can still take a loan or pay off debts, then end your turn.', 'Dein Zug ist erledigt. Du kannst noch Kredite aufnehmen oder Schulden ablösen, dann den Zug beenden.'],
   eFastBiz: ['A <b>business</b> on the fast track: pay {cost} once, earn +{cf} every Euro Flow Day. That gets you {pct} % of the way to the €50,000 goal.', 'Ein <b>Unternehmen</b> auf der Überholspur: einmal {cost} zahlen, jeden Euro-Flow-Tag +{cf}. Das bringt dich {pct} % näher ans 50.000-€-Ziel.'],
   eFastDream: ['Your <b>dream</b>! Buy it for {cost} and you win immediately.', 'Dein <b>Traum</b>! Kaufe ihn für {cost} und du gewinnst sofort.'],
@@ -129,10 +130,40 @@ addStrings({
   gTip6: ['A low salary isn’t bad here: lower expenses mean you need less passive income to escape.', 'Ein niedriges Gehalt ist hier nicht schlimm: Niedrige Ausgaben heißen, du brauchst weniger passives Einkommen zum Ausstieg.'],
   gTipFast1: ['Buy the businesses with the highest monthly income first – they get you to +€50,000 fastest.', 'Kaufe zuerst die Unternehmen mit dem höchsten Monatseinkommen – so erreichst du +50.000 € am schnellsten.'],
   gTipFast2: ['Keep enough cash for your dream: the moment you land on it, you can win.', 'Halte genug Bargeld für deinen Traum bereit: Sobald du darauf landest, kannst du gewinnen.'],
+  eCrypto: ['<b>Crypto</b> pays no income and swings wildly. German rule: held longer than 1 year (1 lap), gains are completely tax-free; before that, gains above €1,000 a year are taxed at your personal rate.', '<b>Krypto</b> bringt kein Einkommen und schwankt stark. Deutsche Regel: Nach über 1 Jahr Haltedauer (1 Runde) sind Gewinne komplett steuerfrei; davor werden Gewinne über 1.000 € im Jahr mit deinem persönlichen Steuersatz besteuert.'],
+  eCoop: ['<b>Cooperative shares</b> are very safe and pay about 3 % ({cf}/month on {down}). Good for peace of mind, too small to escape with.', '<b>Genossenschaftsanteile</b> sind sehr sicher und bringen rund 3 % ({cf}/Monat auf {down}). Gut fürs Gewissen, zu klein für den Ausstieg.'],
+  eImmoTax: ['German tax rule: if you sell this property at a profit within the speculation period (4 laps in the game, 10 years in real life), the gain is taxed at your personal rate. After that it is tax-free.', 'Deutsche Steuerregel: Verkaufst du diese Immobilie innerhalb der Spekulationsfrist (4 Runden im Spiel, 10 Jahre in echt) mit Gewinn, wird der Gewinn mit deinem persönlichen Steuersatz versteuert. Danach ist er steuerfrei.'],
+  eDenkmal: ['<b>Listed building:</b> with a tax advisor you can write off 9 % per year instead of 2 % – the higher your tax rate, the more it saves.', '<b>Denkmalschutz:</b> Mit Steuerberater schreibst du 9 % pro Jahr ab statt 2 % – je höher dein Steuersatz, desto mehr sparst du.'],
+  oBuyBauspar: ['<b>Buy with Bausparvertrag</b> – your Bauspar savings go into the deal plus a cheap building loan (1 %/month) instead of the 10 % bank loan.', '<b>Mit Bausparvertrag kaufen</b> – dein Bauspar-Guthaben fließt in den Kauf plus ein günstiges Bauspardarlehen (1 %/Monat) statt des Bankkredits zu 10 %.'],
+  eEtfPlan: ['An <b>ETF savings plan</b> invests a fixed amount every payday into a fund of 1,500 companies. The index moves with every market space. You get 4 % of the value per year as passive income, so it slowly helps you escape. You can change, pause or sell it any time in your statement.', 'Ein <b>ETF-Sparplan</b> investiert jeden Zahltag einen festen Betrag in einen Fonds aus 1.500 Firmen. Der Index bewegt sich mit jedem Marktfeld. Du bekommst 4 % des Werts pro Jahr als passives Einkommen – das hilft langsam beim Ausstieg. Ändern, pausieren oder verkaufen kannst du jederzeit im Finanzbericht.'],
+  oEtfPlan: ['<b>Start/increase the plan</b> – choose the amount per payday. It lowers your monthly cash, but the money is not gone: it is invested.', '<b>Sparplan starten/erhöhen</b> – wähle den Betrag pro Zahltag. Er senkt dein monatliches Bargeld, aber das Geld ist nicht weg: es ist investiert.'],
+  eBauspar: ['A <b>Bausparvertrag</b> is a German classic: you save a fixed amount each payday. Once €3,000 is saved, it is ready and you can use it when buying a building: the savings go into the purchase and the building society lends up to twice as much at 1 % per month – much cheaper than the 10 % bank loan.', 'Ein <b>Bausparvertrag</b> ist ein deutscher Klassiker: Du sparst jeden Zahltag einen festen Betrag. Ab 3.000 € ist er zuteilungsreif und beim Immobilienkauf nutzbar: Das Guthaben fließt in den Kauf und die Bausparkasse leiht dir bis zum Doppelten zu 1 % pro Monat – viel günstiger als der Bankkredit zu 10 %.'],
+  oBauspar: ['<b>Sign</b> the contract ({amt}/payday) or end your turn.', '<b>Abschließen</b> oder Zug beenden.'],
+  eChoice: ['You decide. If you quit yourself, the job centre imposes a <b>Sperrzeit</b> of 12 weeks (here: 3 paydays) without unemployment benefit – but you then start a better-paid job. If you stay, it costs money now.', 'Du entscheidest. Kündigst du selbst, verhängt die Arbeitsagentur eine <b>Sperrzeit</b> von 12 Wochen (hier: 3 Zahltage) ohne Arbeitslosengeld – danach startest du aber einen besser bezahlten Job. Bleibst du, kostet es jetzt Geld.'],
+  oChoice: ['<b>A) Quit</b> or <b>B) Stay</b>.', '<b>A) Kündigen</b> oder <b>B) Bleiben</b>.'],
+  tipQuit: ['A pro would quit: you have enough cash to bridge 3 paydays, and +10 % salary pays off for the rest of the game.', 'Ein Profi würde kündigen: Du hast genug Bargeld für 3 Zahltage, und +10 % Gehalt lohnen sich für den Rest des Spiels.'],
+  tipStay: ['A pro would stay: 3 paydays without income would hurt too much right now.', 'Ein Profi würde bleiben: 3 Zahltage ohne Einkommen täten gerade zu sehr weh.'],
+  eRate: ['The <b>ECB</b> changed interest rates. Low rates make property more valuable (buyers pay more), high rates make it cheaper. It changes the prices on property buyer cards and the value of your property.', 'Die <b>EZB</b> hat die Zinsen geändert. Niedrige Zinsen machen Immobilien wertvoller (Käufer zahlen mehr), hohe Zinsen billiger. Das ändert die Preise auf Immobilien-Käuferkarten und den Wert deiner Immobilien.'],
+  eIndex: ['The <b>World ETF</b> moved. Everyone with an ETF savings plan gains or loses. Crashes are normal – people who keep saving buy cheaply.', 'Der <b>Welt-ETF</b> hat sich bewegt. Alle mit ETF-Sparplan gewinnen oder verlieren. Crashs sind normal – wer weiter spart, kauft günstig.'],
+  eBadTenant: ['<b>Rent nomad:</b> German tenant protection means an eviction takes months. During that time the property earns no rent – but the loan still has to be paid.', '<b>Mietnomade:</b> Wegen des deutschen Mieterschutzes dauert eine Räumung Monate. So lange bringt die Immobilie keine Miete – der Kredit muss trotzdem bezahlt werden.'],
+  eAlg: ['You are <b>unemployed</b>: instead of your salary you get {amt} unemployment benefit for {n} more paydays. Your investments keep paying.', 'Du bist <b>arbeitslos</b>: Statt Gehalt bekommst du noch {n} Zahltage lang {amt} Arbeitslosengeld. Deine Investitionen zahlen weiter.'],
+  eSperr: ['<b>Sperrzeit:</b> for {n} more paydays you get neither salary nor unemployment benefit. Then your new job starts.', '<b>Sperrzeit:</b> Noch {n} Zahltage bekommst du weder Gehalt noch Arbeitslosengeld. Dann beginnt dein neuer Job.'],
+  tipAdvisor: ['Hire a tax advisor (in your statement): depreciation on your property would save you {amt}/month in income tax.', 'Beauftrage einen Steuerberater (im Finanzbericht): Die Abschreibung deiner Immobilien würde dir {amt}/Monat Lohnsteuer sparen.'],
+  tipEtfYes: ['A pro would start a plan of about {amt} per payday – steady investing beats timing the market.', 'Ein Profi würde einen Sparplan über rund {amt} pro Zahltag starten – regelmäßig investieren schlägt Market-Timing.'],
+  tipEtfNo: ['A pro would skip for now – your cash flow is small, keep the cash for deals.', 'Ein Profi würde jetzt passen – dein Cashflow ist klein, behalte das Geld für Deals.'],
+  tipBausparYes: ['A pro would sign: it forces you to save and unlocks a cheap loan for your next property.', 'Ein Profi würde abschließen: Es zwingt zum Sparen und schaltet ein günstiges Darlehen für die nächste Immobilie frei.'],
+  tipBausparNo: ['A pro would skip: right now the money works better in deals.', 'Ein Profi würde passen: Gerade arbeitet das Geld in Deals besser.'],
+  tipCoop: ['Safe but only about 3 % – a pro skips it here.', 'Sicher, aber nur rund 3 % – ein Profi passt hier.'],
+  tipCryptoBuy: ['A pro might buy a little with spare cash – a lottery ticket that is tax-free after 1 year.', 'Ein Profi kauft evtl. ein wenig mit freiem Geld – ein Los, das nach 1 Jahr steuerfrei ist.'],
+  tipCryptoSkip: ['A pro would skip: very risky and you need the cash.', 'Ein Profi würde passen: sehr riskant, und du brauchst das Geld.'],
+  tipUseBauspar: ['A pro would buy with the Bausparvertrag – a cheap loan instead of the 10 % bank loan.', 'Ein Profi würde mit dem Bausparvertrag kaufen – günstiges Darlehen statt Bankkredit zu 10 %.'],
+  tipWaitTax: ['A pro would wait: selling now costs {tax} speculation tax – after the speculation period it is tax-free.', 'Ein Profi würde warten: Jetzt verkaufen kostet {tax} Spekulationssteuer – nach der Spekulationsfrist ist es steuerfrei.'],
+  law: ['📜 German law: {ref}', '📜 Gesetz: {ref}'],
   tipEscape: ['Your passive income already beats your expenses – next turn you move to the fast track!', 'Dein passives Einkommen schlägt schon deine Ausgaben – nächsten Zug geht es auf die Überholspur!'],
 });
 
 const li = s => `<li>${s}</li>`;
+const p_unemployed = p => p.alg > 0 || p.sperr > 0;
 
 // Plain-language explanation for a log entry (shown under "What just happened")
 const JX = {
@@ -168,12 +199,14 @@ export function coachHTML(s, isMine, justOpen = false) {
     explain.push(t('cNotYourTurn', { name: cur.name }));
     options.push(t('oWatch'));
   } else {
-    if (me.track === 'rat') explain.push(t('cGoalRat', { pas: { m: passive(me) }, exp: { m: totalExpenses(me) }, gap: { m: Math.max(0, totalExpenses(me) - passive(me)) } }));
+    if (me.track === 'rat') explain.push(t('cGoalRat', { pas: { m: passive(me) }, exp: { m: escapeTarget(me, s) }, gap: { m: Math.max(0, escapeTarget(me, s) - passive(me)) } }));
     else explain.push(t('cGoalFast', { dream: fastName(me.dream), cost: { m: dreamCost(s, me.dream) }, have: { m: me.fast.income - me.fast.start } }));
     const card = cardOf(s.card);
     if (me !== cur) { explain.push(t('cNotYourTurn', { name: cur.name })); options.push(t('oWait', { name: cur.name })); }
     if (card && s.step === 'card') explainCard(s, me, cur, card, explain, options, tips);
     if (me === cur) explainStep(s, me, card, explain, options, tips);
+    const ref = card && s.step === 'card' ? lawForCard(card) : me === cur ? lawForStep(s, me) : '';
+    if (ref) explain.push(t('law', { ref }));
     if (me.track === 'rat') options.push(t('cAnytime'));
     if (!tips.length) tips.push(generalTip(s, me));
   }
@@ -181,6 +214,45 @@ export function coachHTML(s, isMine, justOpen = false) {
     <h5>${t('cExplain')}</h5>${explain.map(x => `<p>${x}</p>`).join('')}
     <h5>${t('cOptions')}</h5><ul>${[...new Set(options)].map(li).join('') || li(t('oNothing'))}</ul>
     <div class="ctip"><b>${t('cTip')}</b> ${tips.join(' ') || t('gTip1')}</div>`;
+}
+
+// The German law behind a card or event (shown by the coach)
+function lawForCard(c) {
+  const T = c.title || '';
+  switch (c.type) {
+    case 'stock': return '§20, §32d EStG (Abgeltungsteuer), §20 Abs. 9 EStG (Sparerpauschbetrag)';
+    case 'split': return '§20 Abs. 4a EStG';
+    case 'etfplan': return '§20 InvStG (Teilfreistellung 30 %), §20 EStG';
+    case 'bauspar': return 'Bausparkassengesetz (BauSparkG)';
+    case 'choice': return '§159 SGB III (Sperrzeit bei Eigenkündigung)';
+    case 'rentUp': return '§557b BGB (Indexmiete)';
+    case 'badTenant': return '§543, §569 BGB (fristlose Kündigung), §940a ZPO (Räumung)';
+    case 'cfAll': return c.kind === 'etw' ? '§556d BGB (Mietpreisbremse)' : c.kind === 'mfh' ? '§558 BGB (Mieterhöhung bis zur ortsüblichen Vergleichsmiete)' : '';
+    case 'payIf': return /Heizung/.test(T) ? 'Gebäudeenergiegesetz (GEG)' : c.perAsset ? 'Grundsteuergesetz (GrStG)' : /Sonderumlage/.test(T) ? '§16, §28 WEG' : '';
+    case 'pay': return /Rundfunk/.test(T) ? 'Rundfunkbeitragsstaatsvertrag' : /Steuererklärung/.test(T) ? '§152 AO (Verspätungszuschlag)' : /Geblitzt/.test(T) ? 'Bußgeldkatalog (BKatV)' : /TÜV/.test(T) ? '§29 StVZO (Hauptuntersuchung)' : '';
+    case 'gain': return /Steuer/.test(T) ? '§9 EStG (Werbungskosten), §46 EStG' : '';
+    case 'sell': return ['gold', 'crypto'].includes(c.kind) || IMMO.includes(c.kind) ? '§23 EStG (private Veräußerungsgeschäfte)' : c.kind === 'biz' ? '§16, §17 EStG' : '';
+    case 'asset':
+      if (c.afa) return '§7i EStG (Denkmal-AfA), §6 Abs. 1 Nr. 1a EStG (15-%-Grenze)';
+      if (BUILDINGS.includes(c.kind)) return '§1 GrEStG (Grunderwerbsteuer), §7 Abs. 4 EStG (AfA), §23 EStG (Spekulationsfrist)';
+      if (c.kind === 'land') return '§1 GrEStG, §23 EStG';
+      if (c.kind === 'gold' || c.kind === 'crypto') return '§23 Abs. 1 Nr. 2 EStG (1 Jahr Haltefrist)';
+      if (c.kind === 'coop') return 'Genossenschaftsgesetz (GenG)';
+      if (c.kind === 'bond') return '§20 EStG';
+      if (c.kind === 'biz') return '§230 HGB (stille Gesellschaft), §15 EStG';
+      return '';
+    default: return '';
+  }
+}
+function lawForStep(s, me) {
+  if (me.track !== 'rat' || s.step !== 'end' && s.step !== 'charity' && s.step !== 'roll') return '';
+  const sp = RAT[me.pos];
+  if (s.step === 'charity') return '§10b EStG (Spenden absetzbar)';
+  if (s.step === 'roll') return me.alg > 0 ? '§136 SGB III (Arbeitslosengeld I)' : me.sperr > 0 ? '§159 SGB III (Sperrzeit)' : '§32a EStG (Einkommensteuertarif)';
+  if (sp === 'downsized') return '§136, §149 SGB III (Arbeitslosengeld I, 60 %)';
+  if (sp === 'baby') return '§66 EStG (Kindergeld)';
+  if (sp === 'payday') return '§32a EStG, §3 SolzG (Soli-Freigrenze), SGB IV (Beitragsbemessungsgrenzen)';
+  return '';
 }
 
 function generalTip(s, me) {
@@ -200,18 +272,24 @@ function explainCard(s, me, cur, card, explain, options, tips) {
       const down = buyCost(card);
       if (card.kind === 'land') explain.push(t('eLand'));
       else if (card.kind === 'gold') explain.push(t('eGold'));
+      else if (card.kind === 'crypto') explain.push(t('eCrypto'));
+      else if (card.kind === 'coop') explain.push(t('eCoop', { cf: { m: card.cf }, down: { m: down } }));
       else if (card.kind === 'bond') explain.push(t('eBond', { cf: { m: card.cf }, down: { m: down } }));
       else if (card.cf < 0) explain.push(t('eAssetNeg', { cf: { m: card.cf } }));
       else {
-        const loan = darlehen(card);
-        const gap = Math.max(1, totalExpenses(me) - passive(me));
+        const loan = darlehen(card, s);
+        const gap = Math.max(1, escapeTarget(me, s) - passive(me));
         explain.push(t('eAsset', {
           down: { m: down }, cf: { sm: card.cf }, roi: Math.round(card.cf * 1200 / down), months: Math.ceil(down / card.cf),
           pct: Math.min(100, Math.round(card.cf / gap * 100)),
           loanPart: loan ? { k: 'eLoanPart', p: { loan: { m: loan } } } : '',
         }));
       }
+      if (BUILDINGS.includes(card.kind) && R(s).specTax) explain.push(t('eImmoTax'));
+      if (card.afa) explain.push(t('eDenkmal'));
       if (me.cash < down) { const l = Math.ceil((down - me.cash) / 1000) * 1000; explain.push(t('eNeedLoan', { cash: { m: me.cash }, loan: { m: l }, int: { m: l / 10 } })); }
+      const bs = bausparOf(me);
+      if (bs && bs.ready && BUILDINGS.includes(card.kind) && !s.card.done) options.push(t('oBuyBauspar'));
       if (!s.card.done) {
         options.push(t('oBuyAsset', { amt: { m: down } }));
         const d = decideBuy(s, me, card, 'hard');
@@ -225,7 +303,7 @@ function explainCard(s, me, cur, card, explain, options, tips) {
       const level = card.price <= lo + (hi - lo) * 0.2 ? 'lvlLow' : card.price >= lo + (hi - lo) * 0.65 ? 'lvlHigh' : 'lvlMid';
       explain.push(t('eStock', { name: card.sym, range: `${fmt(lo)} – ${fmt(hi)}`, price: { m: card.price }, level: { k: level } }));
       for (const a of mineAssets) {
-        explain.push(t('eStockOwn', { n: a.shares, sym: a.sym, avg: { m: a.cost / a.shares }, amt: { m: card.price * a.shares - saleTax(me, card, a, a.shares).tax } }));
+        explain.push(t('eStockOwn', { n: a.shares, sym: a.sym, avg: { m: a.cost / a.shares }, amt: { m: card.price * a.shares - saleTax(me, card, a, a.shares, s).tax } }));
         options.push(t('oSellBtn'));
         const d = decideSell(s, me, card, a, 'hard'); if (d.why) tips.push(t(d.why, d.params));
       }
@@ -240,7 +318,7 @@ function explainCard(s, me, cur, card, explain, options, tips) {
       explain.push(t('eSell'));
       if (!mineAssets.length) explain.push(t('eSellNone'));
       for (const a of mineAssets) {
-        explain.push(t('eSellMine', { asset: assetName(a), net: { sm: saleNet(me, card, a) }, cf: { m: a.cf } }));
+        explain.push(t('eSellMine', { asset: assetName(a), net: { sm: saleNet(me, card, a, s) }, cf: { m: a.cf } }));
         const d = decideSell(s, me, card, a, 'hard'); if (d.why) tips.push(t(d.why, d.params));
       }
       if (mineAssets.length) options.push(t('oSellBtn'));
@@ -249,6 +327,24 @@ function explainCard(s, me, cur, card, explain, options, tips) {
     case 'finance': if (me === cur) explain.push(t('eDoodad'), t('eFinance')); break;
     case 'rentUp': if (me === cur) explain.push(t('eRent')); break;
     case 'cfAll': explain.push(t('eCfAll')); break;
+    case 'etfplan':
+      if (me !== cur) break;
+      explain.push(t('eEtfPlan'));
+      if (!s.card.done) { options.push(t('oEtfPlan')); const d = decideBuy(s, me, card, 'hard'); if (d.why) tips.push(t(d.why, d.params)); }
+      break;
+    case 'bauspar':
+      if (me !== cur) break;
+      explain.push(t('eBauspar'));
+      if (!s.card.done) { options.push(t('oBauspar', { amt: { m: card.monthly } })); const d = decideBuy(s, me, card, 'hard'); if (d.why) tips.push(t(d.why, d.params)); }
+      break;
+    case 'choice':
+      if (me !== cur) break;
+      explain.push(t('eChoice'));
+      if (!s.card.done) { options.push(t('oChoice')); tips.push(t(decideChoice(s, me, 'hard') === 'quit' ? 'tipQuit' : 'tipStay')); }
+      break;
+    case 'rate': explain.push(t('eRate')); break;
+    case 'index': explain.push(t('eIndex')); break;
+    case 'badTenant': explain.push(t('eBadTenant')); break;
     default: if (me === cur) explain.push(t('eEvent'));
   }
 }
@@ -258,12 +354,15 @@ function explainStep(s, me, card, explain, options, tips) {
     case 'roll': {
       if (me.skip > 0) { options.push(t('oSkip')); break; }
       if (me.track === 'rat') {
-        options.push(t('oRoll', { cf: { sm: cashflow(me) } }));
+        options.push(t('oRoll', { cf: { sm: cashflow(me, s) } }));
+        if (p_unemployed(me)) explain.push(t(me.alg > 0 ? 'eAlg' : 'eSperr', { amt: { m: algAmount(me, s) }, n: me.alg || me.sperr }));
+        const adv = advisorWorth(s, me, 'hard');
+        if (adv) tips.push(t('tipAdvisor', { amt: { m: adv } }));
         if (me.charity > 0) options.push(t('oDice12'));
         const debt = debtToPay(me, 'hard');
         if (debt?.which === 'loan') tips.push(t('tipPayLoan', { amt: { m: debt.amount } }));
         else if (debt) tips.push(t('tipPayDebt', { debt: { k: 'debt_' + debt.which }, amt: { m: me.debts[debt.which].bal }, pay: { m: me.debts[debt.which].pay } }));
-        if (passive(me) > totalExpenses(me)) tips.push(t('tipEscape'));
+        if (passive(me) > escapeTarget(me, s)) tips.push(t('tipEscape'));
       } else options.push(t('oRollFast', { amt: { m: me.fast.income } }));
       break;
     }
@@ -274,9 +373,9 @@ function explainStep(s, me, card, explain, options, tips) {
       break;
     case 'card': options.push(t('oEnd')); break;
     case 'charity': {
-      const amt = Math.round(totalIncome(me) * 0.1);
+      const amt = Math.round(totalIncome(me, s) * 0.1);
       explain.push(t('eCharity', { amt: { m: amt } }));
-      tips.push(t(decideCharity(me, 'hard') ? 'tipCharityYes' : 'tipCharityNo'));
+      tips.push(t(decideCharity(s, me, 'hard') ? 'tipCharityYes' : 'tipCharityNo'));
       break;
     }
     case 'fast': {
@@ -291,7 +390,7 @@ function explainStep(s, me, card, explain, options, tips) {
     }
     case 'end': {
       const last = me.track === 'rat' ? RAT[me.pos] : null;
-      if (last === 'payday') explain.push(t('ePayday', { cf: { sm: cashflow(me) } }));
+      if (last === 'payday') explain.push(t('ePayday', { cf: { sm: cashflow(me, s) } }));
       else if (last === 'baby') explain.push(t('eBaby', { per: { m: me.childPer }, kg: { m: KINDERGELD }, net: { sm: KINDERGELD - me.childPer } }));
       else if (last === 'downsized') explain.push(t('eFired'));
       else explain.push(t('eEndGeneric'));

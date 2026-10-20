@@ -1,17 +1,20 @@
-import { FAST, RAT, DREAM_INDEXES, COLORS, KINDERGELD, STOCKS } from './data.js';
+import { FAST, RAT, DREAM_INDEXES, COLORS, STOCKS, CITIES, ADVISOR_FEE, ADVISOR_MONTH, BAUSPAR_READY, SPEKU_YEARS_IMMO, SPEKU_YEARS_GOLD } from './data.js';
 import {
-  apply, newGame, passive, totalExpenses, totalIncome, cashflow, expenseLines, kindergeld, cardOf,
-  sellable, salePrice, saleTax, nebenkosten, darlehen, dreamCost, loanPay, buyCost,
+  apply, newGame, passive, totalIncome, cashflow, cardOf, R, BUILDINGS, IMMO,
+  sellable, salePrice, saleTax, nebenkosten, nkRate, darlehen, dreamCost, loanPay, buyCost,
+  incomeLines, deductionLines, livingLines, saveLines, livingCosts, healthCost, escapeTarget, assetCf, netWorth,
+  payInfo, afaPotential, etfOf, bausparOf, etfSaleTax, working,
 } from './engine.js';
 import { boardSVG, drawDynamic } from './board.js';
 import { hostRoom, joinRoom, newCode } from './net.js';
 import { botAction, botSells } from './bot.js';
 import { coachHTML } from './assistant.js';
-import { t, fmt, sfmt, setLang, getLang, cardT, fastName, fastText, profName, assetName, stockName, stockWhat, logLine, RULES } from './i18n.js';
+import { t, fmt, sfmt, setLang, getLang, cardT, fastName, fastText, profName, assetName, stockName, stockWhat, logLine, cityName, RULES } from './i18n.js';
+import { reportHTML } from './report.js';
 
 const $ = sel => document.querySelector(sel);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const SAVE = 'euroflow-save-v3';
+const SAVE = 'euroflow-save-v4';
 const DICE = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
 const BOT_NAMES = ['Lena', 'Jonas', 'Mia', 'Felix', 'Emma', 'Paul', 'Hannah', 'Leon', 'Sophie', 'Ben'];
 
@@ -161,7 +164,7 @@ function botStep() {
   if (state.step === 'card' && a.type === 'endTurn') {
     const card = cardOf(state.card);
     // the bot declines a buyable card → record it so the popup can show "didn't buy"
-    if ((card.type === 'asset' || card.type === 'stock') && !state.card.done && !(state.card.passed || []).includes(c.id)) a = { type: 'passCard', pid: c.id };
+    if (['asset', 'stock', 'etfplan', 'bauspar'].includes(card.type) && !state.card.done && !(state.card.passed || []).includes(c.id)) a = { type: 'passCard', pid: c.id };
     // keep the popup open: wait for humans to sell, and for a click on the board (or a timeout)
     else if ((humansDeciding().length || (humanHere() && ackCard !== state.card.id)) && Date.now() - cardSince < ACK_WAIT) {
       botTimer = setTimeout(() => { botTimer = null; botStep(); }, 500);
@@ -264,8 +267,11 @@ function render() {
 
 function renderLobby() {
   const host = mode !== 'client';
+  const realistic = state.mode === 'realistic';
   $('#lobby-invite').hidden = !net;
   if (net) { $('#invite-link').value = `${location.origin}${location.pathname}?room=${net.code}`; $('#room-code').textContent = net.code; }
+  $('#lobby-mode').innerHTML = `<label>${t('gameMode')}</label><div class="modes">${['easy', 'classic', 'realistic'].map(m =>
+    `<button class="modebtn ${state.mode === m ? 'on' : ''}" data-mode="${m}" ${host ? '' : 'disabled'}><b>${t('mode_' + m)}</b><small>${t('modeHint_' + m)}</small></button>`).join('')}</div>`;
   $('#lobby-players').innerHTML = state.players.map(p => {
     const editable = mine(p) || (host && p.bot);
     return `<div class="lp" style="--c:${p.color}">
@@ -276,6 +282,9 @@ function renderLobby() {
         <select data-dream="${p.id}" ${editable ? '' : 'disabled'}>
           ${DREAM_INDEXES.map(d => `<option value="${d}" ${p.dream === d ? 'selected' : ''}>${FAST[d].icon} ${esc(fastName(d))} (${fmt(FAST[d].cost)})</option>`).join('')}
         </select></label>
+      ${realistic ? `<label>${t('homeCity')}
+        <select data-city="${p.id}" ${editable ? '' : 'disabled'}>${CITIES.map(c => `<option value="${c.key}" ${p.city === c.key ? 'selected' : ''}>${esc(cityName(c))}</option>`).join('')}</select></label>
+        <label class="church"><input type="checkbox" data-church="${p.id}" ${p.church ? 'checked' : ''} ${editable ? '' : 'disabled'}> ${t('churchMember')}</label>` : ''}
       <span class="colors">${editable ? COLORS.map(c => `<button class="sw ${c === p.color ? 'on' : ''}" style="background:${c}" data-color="${c}" data-pid="${p.id}" title="${t('color')}"></button>`).join('') : ''}</span>
       ${(host || mine(p)) ? `<button class="x" data-remove="${p.id}" title="${t('remove')}">✕</button>` : ''}
     </div>`;
@@ -335,7 +344,7 @@ function renderTurn() {
         <button class="btn ghost" data-act="endTurn">${t('noDeal')}</button>`;
       break;
     case 'charity':
-      act = `<p class="hint">${t('charityQ', { amt: { m: Math.round(totalIncome(c) * 0.1) } })}</p>
+      act = `<p class="hint">${t('charityQ', { amt: { m: Math.round(totalIncome(c, s) * 0.1) } })}</p>
         <div class="row"><button class="btn purple" data-act="charity" data-accept="1">${t('donate')}</button><button class="btn ghost" data-act="charity">${t('noThanks')}</button></div>`;
       break;
     case 'fast': {
@@ -350,10 +359,12 @@ function renderTurn() {
     default: act = `<button class="btn big" data-act="endTurn">${t('endTurn')}</button>`;
   }
   const where = c.track === 'rat' ? (c.pos < 0 ? t('start') : t('sp_' + RAT[c.pos])) : fastName(c.pos);
-  el.innerHTML = `<div class="turnhead"><span class="dot" style="background:${c.color}"></span> ${t('isTurn', { name: esc(pname(c)) })}<small>${c.track === 'rat' ? t('ratRace') : t('fastTrack')} · ${esc(where)}</small></div>${dice}<div class="actions">${act}</div>`;
+  const info = `<div class="trayinfo">${c.track === 'rat' ? `<span title="${t('yearHint')}">📅 ${t('yearN', { n: c.year })}</span>` : ''}<span title="${t('indexHint')}">📈 ${t('etfIndex')} ${Math.round(s.index)}</span><span title="${t('rateHint')}">🏦 ${t('rate_' + (s.rate || 0))}</span></div>`;
+  el.innerHTML = `<div class="turnhead"><span class="dot" style="background:${c.color}"></span> ${t('isTurn', { name: esc(pname(c)) })}<small>${c.track === 'rat' ? t('ratRace') : t('fastTrack')} · ${esc(where)}</small></div>${dice}<div class="actions">${act}</div>${info}`;
 }
 
 function cardBody(card) {
+  const s = state;
   const row = (k, v, cls = '') => `<tr class="${cls}"><td>${k}</td><td>${v}</td></tr>`;
   if (card.type === 'stock') {
     const st = STOCKS[card.sym];
@@ -361,15 +372,21 @@ function cardBody(card) {
     return `<table>${row(t('cSymbol'), card.sym)}${row(t('cCompany'), `${esc(stockName(card.sym))} (${esc(stockWhat(card.sym))})`)}${row(t('cToday'), `<b>${fmt(card.price)}</b>`)}${row(t('cRange'), `${fmt(lo)} – ${fmt(hi)}`)}${row(t('cDividend'), t('none'))}</table>
       <p class="fine">${t('cStockFine')}</p>`;
   }
+  if (card.type === 'etfplan') return `<table>${row(t('etfIndex'), Math.round(s.index))}${row(t('cTeilfrei'), '30 %')}</table><p class="fine">${t('cEtfFine')}</p>`;
+  if (card.type === 'bauspar') return `<table>${row(t('cMonthly'), fmt(card.monthly))}${row(t('cBausparReady'), fmt(BAUSPAR_READY))}${row(t('cBausparLoan'), t('cBausparLoanV'))}</table>`;
+  if (card.type === 'rate') return `<table>${row(t('cRateNow'), `<b>${t('rate_' + (s.rate || 0))}</b>`)}</table>`;
+  if (card.type === 'index') return `<table>${row(t('etfIndex'), `<b>${Math.round(s.index)}</b>`)}</table>`;
   if (card.type === 'asset') {
-    if (card.kind === 'gold') return `<table>${row(t('cAmount'), t('coins', { n: card.units }))}${row(t('perCoin'), fmt(card.unitPrice))}${row(t('total'), `<b>${fmt(card.units * card.unitPrice)}</b>`)}</table>`;
-    const nk = nebenkosten(card), dl = darlehen(card), biz = card.kind === 'biz';
-    return `<table>${row(t('cPrice'), fmt(card.price))}${nk ? row(t('cNk'), fmt(nk), 'sub') : ''}${row(biz ? t('cCapital') : t('cEquity'), `<b>${fmt(card.down)}</b>`)}${dl ? row(biz ? t('cLiability') : t('cMortgage'), fmt(dl)) : ''}${row(t('cCf'), `<b class="${card.cf < 0 ? 'neg' : 'pos'}">${sfmt(card.cf)}</b>`)}</table>
+    if (card.kind === 'gold' || card.kind === 'crypto') return `<table>${row(t('cAmount'), t(card.kind === 'gold' ? 'coins' : 'units', { n: card.units }))}${row(t(card.kind === 'gold' ? 'perCoin' : 'perUnit'), fmt(card.unitPrice))}${row(t('total'), `<b>${fmt(card.units * card.unitPrice)}</b>`)}</table>`;
+    const nk = nebenkosten(card, s), dl = darlehen(card, s), biz = card.kind === 'biz' || card.kind === 'coop';
+    const pct = Math.round(nkRate(card, s) * 1000) / 10;
+    return `<table>${row(t('cPrice'), fmt(card.price))}${nk ? row(t('cNkPct', { pct: String(pct).replace('.', getLang() === 'de' ? ',' : '.'), st: R(s).city && card.st ? card.st : '' }), fmt(nk), 'sub') : ''}${row(biz ? t('cCapital') : t('cEquity'), `<b>${fmt(card.down)}</b>`)}${dl ? row(biz ? t('cLiability') : t('cMortgage'), fmt(dl)) : ''}${row(t('cCf'), `<b class="${card.cf < 0 ? 'neg' : 'pos'}">${sfmt(card.cf)}</b>`)}${card.afa ? row(t('cAfa'), `${Math.round(card.afa * 100)} %`) : ''}</table>
       ${nk ? `<p class="fine">${t('cNkFine')}</p>` : ''}`;
   }
   if (card.type === 'sell') {
-    const how = card.perUnit ? t(card.kind === 'gold' ? 'perUnitCoin' : 'perUnitFlat', { amt: { m: card.perUnit } }) : card.mult ? t('multPrice', { n: card.mult }) : fmt(card.price);
-    return `<table>${row(t('cBuyerPays'), `<b>${how}</b>`)}</table><p class="fine">${t('cSellFine')}</p>`;
+    const how = card.perUnit ? t(card.kind === 'gold' ? 'perUnitCoin' : card.kind === 'crypto' ? 'perUnitCrypto' : 'perUnitFlat', { amt: { m: card.perUnit } }) : card.mult ? t('multPrice', { n: card.mult }) : fmt(card.price);
+    const rf = IMMO.includes(card.kind) && s.rate ? `<p class="fine">${t('cRateAdj', { lvl: t('rate_' + s.rate) })}</p>` : '';
+    return `<table>${row(t('cBuyerPays'), `<b>${how}</b>`)}</table>${rf}<p class="fine">${t('cSellFine')}</p>`;
   }
   return '';
 }
@@ -383,12 +400,20 @@ function renderCard() {
   const tx = cardT(s.card.deck, s.card.i);
   const drawer = s.players.find(p => p.id === s.card.by);
   let actions = '';
-  if (mine(c) && c.id === s.card.by && !s.card.done && (card.type === 'stock' || card.type === 'asset')) {
+  const myTurnCard = mine(c) && c.id === s.card.by && !s.card.done;
+  if (myTurnCard) {
     if (card.type === 'stock') actions += `<div class="buyrow"><input type="number" id="qty" min="1" step="10" value="100"> ${t('shares')} <button class="btn green" data-act="buy">${t('buy')}</button></div><div class="fine" id="qtycost"></div>`;
-    else {
+    else if (card.type === 'etfplan') {
+      const sug = Math.max(100, Math.round(cashflow(c, s) * 0.2 / 50) * 50);
+      actions += `<div class="buyrow">${t('etfPerPayday')} <input type="number" id="qty" min="50" step="50" value="${sug}"> € <button class="btn green" data-act="buy">${etfOf(c) ? t('etfIncrease') : t('etfStart')}</button></div>`;
+    } else if (card.type === 'bauspar') actions += `<button class="btn green" data-act="buy">${t('bausparSign', { amt: { m: card.monthly } })}</button>`;
+    else if (card.type === 'choice') actions += `<div class="row"><button class="btn" data-act="choose" data-opt="quit">${t('choiceQuit')}</button><button class="btn ghost" data-act="choose" data-opt="stay">${t('choiceStay')}</button></div>`;
+    else if (card.type === 'asset') {
       const need = buyCost(card);
       const loan = Math.max(0, Math.ceil((need - c.cash) / 1000) * 1000);
       actions += `<button class="btn green" data-act="buy">${t('buyFor', { amt: { m: need } })}${loan ? ` <small>${t('inclLoan', { amt: { m: loan } })}</small>` : ''}</button>`;
+      const b = bausparOf(c);
+      if (b && b.ready && BUILDINGS.includes(card.kind)) actions += `<button class="btn green dark" data-act="buy" data-bauspar="1">${t('buyWithBauspar', { amt: { m: b.balance } })}</button>`;
     }
   }
   // selling options for all my players
@@ -402,10 +427,12 @@ function renderCard() {
           <span class="qtywrap"><input type="number" min="1" max="${a.shares}" value="${a.shares}" data-sellqty="${a.id}" data-pid="${p.id}"> <button class="btn small" data-act="sell" data-pid="${p.id}" data-asset="${a.id}">${t('sell')}</button></span>
           <span class="selltotal" data-selltotal="${a.id}"></span></div>`;
       } else {
-        const price = salePrice(card, a), { tax } = saleTax(p, card, a);
+        const price = salePrice(card, a, s), { tax, why } = saleTax(p, card, a, undefined, s);
         const net = price - (a.mortgage || 0) - tax;
-        actions += `<div class="sellrow"><span style="color:${p.color}">●</span> ${esc(p.name)}: ${esc(assetName(a))} → ${fmt(price)}${a.mortgage ? `, ${t('loanMinus', { amt: { m: a.mortgage } })}` : ''}${tax ? `, ${t('taxMinus', { amt: { m: tax } })}` : ''} = <b class="${net < 0 ? 'neg' : 'pos'}">${fmt(net)}</b>
-          <button class="btn small" data-act="sell" data-pid="${p.id}" data-asset="${a.id}">${t('sell')}</button></div>`;
+        const cost = a.down || a.price || 0, pct = cost ? Math.round((net - cost) / cost * 100) : 0;
+        actions += `<div class="sellrow"><span style="color:${p.color}">●</span> ${esc(p.name)}: ${esc(assetName(a))} → ${fmt(price)}${a.mortgage ? `, ${t('loanMinus', { amt: { m: a.mortgage } })}` : ''}${tax ? `, ${t('taxMinus', { amt: { m: tax } })}` : ''} = <b class="${net < 0 ? 'neg' : 'pos'}">${fmt(net)}</b> <b class="${pct < 0 ? 'neg' : 'pos'}">(${pct >= 0 ? '+' : ''}${pct} %)</b>
+          <button class="btn small" data-act="sell" data-pid="${p.id}" data-asset="${a.id}">${t('sell')}</button>
+          ${tax ? `<span class="selltotal">⚖️ ${t(why)} · ${t('taxFreeFrom', { n: (a.boughtYear || 1) + (IMMO.includes(a.kind) ? SPEKU_YEARS_IMMO : SPEKU_YEARS_GOLD) })}</span>` : ''}</div>`;
       }
     }
     if (own.length && p.id !== c.id && !(s.card.passed || []).includes(p.id)) actions += `<button class="btn small ghost" data-act="passCard" data-pid="${p.id}">${t('keepIt', { name: esc(p.name) })}</button>`;
@@ -415,9 +442,10 @@ function renderCard() {
   const results = s.log.slice(s.card.logAt ?? s.log.length).map(l => `<div>${esc(logLine(l))}</div>`).join('');
   const declined = (s.card.passed || []).includes(s.card.by) && !s.card.done;
   const othersCard = !mine(drawer);
+  const doneTxt = card.type === 'choice' ? t(s.card.choice === 'quit' ? 'choseQuit' : 'choseStay', { name: esc(drawer.name) }) : t('boughtBy', { name: esc(drawer.name) });
   box.innerHTML = `<div class="ch"><span>${t('deck_' + s.card.deck)}</span><small>${t('drawnBy')} <b style="color:${drawer?.color}">${esc(drawer && pname(drawer))}</b></small></div>
     <h3>${esc(tx.title)}</h3><p class="ct">${esc(tx.text)}</p>${cardBody(card)}
-    ${s.card.done ? `<p class="done">${t('boughtBy', { name: esc(drawer.name) })}</p>` : declined ? `<p class="declined">${t('declinedBy', { name: esc(drawer.name) })}</p>` : ''}
+    ${s.card.done ? `<p class="done">${doneTxt}</p>` : declined ? `<p class="declined">${t('declinedBy', { name: esc(drawer.name) })}</p>` : ''}
     ${results ? `<div class="cresult"><b>${t('cardResult')}</b>${results}</div>` : ''}
     <div class="cardacts">${actions}</div>
     ${othersCard ? `<p class="clickhint">${t('clickToContinue')}</p>` : ''}`;
@@ -425,19 +453,19 @@ function renderCard() {
     const p = s.players.find(x => x.id === inp.dataset.pid), a = p.assets.find(x => x.id === inp.dataset.sellqty);
     const upd = () => {
       const qty = Math.max(0, Math.min(a.shares, Math.floor(+inp.value || 0)));
-      const gross = qty * card.price, profit = gross - qty * (a.cost / a.shares), { tax } = saleTax(p, card, a, qty);
+      const gross = qty * card.price, profit = gross - qty * (a.cost / a.shares), { tax } = saleTax(p, card, a, qty, s);
       box.querySelector(`[data-selltotal="${a.id}"]`).innerHTML = t('sellTotal', { amt: { m: gross }, profit: { sm: profit }, tax: { m: tax }, net: { m: gross - tax } });
     };
     inp.oninput = upd; upd();
   }
   const q = $('#qty');
-  if (q) { const upd = () => { $('#qtycost').textContent = t('costLine', { cost: { m: (+q.value || 0) * card.price }, cash: { m: c.cash } }); }; q.oninput = upd; upd(); }
+  if (q && card.type === 'stock') { const upd = () => { $('#qtycost').textContent = t('costLine', { cost: { m: (+q.value || 0) * card.price }, cash: { m: c.cash } }); }; q.oninput = upd; upd(); }
 }
 
 function renderPlayers() {
   $('#players').innerHTML = state.players.map(p => {
     if (!p.debts || mine(p)) return '';
-    const exp = totalExpenses(p), pas = passive(p);
+    const exp = escapeTarget(p, state), pas = passive(p);
     const pct = p.track === 'fast' ? Math.min(100, (p.fast.income - p.fast.start) / 500) : Math.min(100, pas / exp * 100);
     return `<button class="pchip ${p.id === viewPid ? 'on' : ''} ${p.out ? 'out' : ''}" data-view="${p.id}" style="--c:${p.color}">
       <span class="pn"><span class="dot"></span>${esc(pname(p))}${state.phase === 'play' && cur().id === p.id ? ' 🎲' : ''}</span>
@@ -449,42 +477,78 @@ function renderPlayers() {
 }
 
 function renderSheet() {
-  const p = state.players.find(q => q.id === viewPid);
+  const s = state, p = s.players.find(q => q.id === viewPid);
   const el = $('#sheet');
-  const can = mine(p) && state.phase === 'play';
+  const can = mine(p) && s.phase === 'play';
   const row = (k, v, cls = '') => `<div class="r ${cls}"><span>${k}</span><b>${v}</b></div>`;
-  const myP = state.players.find(mine);
+  const lines = l => l.map(([k, v, pr]) => row(esc(t(k, pr)), fmt(v), v < 0 ? 'pos' : '')).join('');
+  const myP = s.players.find(mine);
   const back = !mine(p) && myP ? `<button class="btn tiny ghost backme" data-view="${p.id}">${t('backToMe')}</button>` : '';
-  const head = `${back}<div class="sheethead" style="--c:${p.color}"><h2>${esc(pname(p))}${p.bot ? ` <small>(${t('lvlShort_' + p.bot)})</small>` : ''}</h2><span>${esc(profName(p.profKey))}`;
+  const city = R(s).city && p.city && p.city !== 'de' ? ` · 📍 ${esc(cityName(CITIES.find(c => c.key === p.city)))}` : '';
+  const head = `${back}<div class="sheethead" style="--c:${p.color}"><h2>${esc(pname(p))}${p.bot ? ` <small>(${t('lvlShort_' + p.bot)})</small>` : ''}</h2><span>${esc(profName(p.profKey))}${city}`;
   if (p.track === 'fast') {
-    const owned = Object.entries(state.fastOwners).filter(([, id]) => id === p.id).map(([i]) => +i);
+    const owned = Object.entries(s.fastOwners).filter(([, id]) => id === p.id).map(([i]) => +i);
     el.innerHTML = `${head} · 🚀 ${t('fastTrack')}</span></div>
       <div class="big3"><div><small>${t('cash')}</small><b>${fmt(p.cash)}</b></div><div><small>${t('ftIncome')}</small><b class="pos">${fmt(p.fast.income)}</b></div><div><small>${t('goal')}</small><b>${fmt(p.fast.goal)}</b></div></div>
       <div class="prog"><i style="width:${Math.min(100, (p.fast.income - p.fast.start) / 500)}%"></i><span>${t('ftProgress', { amt: { m: p.fast.income - p.fast.start } })}</span></div>
-      <h4>${t('ftDream')}</h4>${row(`${FAST[p.dream].icon} ${esc(fastName(p.dream))}`, fmt(dreamCost(state, p.dream)))}
+      <h4>${t('ftDream')}</h4>${row(`${FAST[p.dream].icon} ${esc(fastName(p.dream))}`, fmt(dreamCost(s, p.dream)))}
       <h4>${t('businesses')}</h4>${owned.filter(i => FAST[i].type === 'biz').map(i => row(esc(fastName(i)), '+' + fmt(FAST[i].cf))).join('') || `<p class="muted">${t('noneYet')}</p>`}
+      <p class="fine">${t('netWorth')}: <b>${fmt(netWorth(p, s))}</b></p>
       <p class="fine">${t('ftFine')}</p>`;
     return;
   }
-  const exp = totalExpenses(p), pas = passive(p), cf = cashflow(p);
-  const income = [row(t('salary'), fmt(p.salary))];
-  if (p.children) income.push(row(t('kindergeld', { n: p.children, amt: { m: KINDERGELD } }), fmt(kindergeld(p))));
-  for (const a of p.assets.filter(x => x.cf)) income.push(row(esc(assetName(a)), fmt(a.cf), 'pass'));
+  const target = escapeTarget(p, s), living = livingCosts(p), health = healthCost(p, s), pas = passive(p), cf = cashflow(p, s);
+  const pi = payInfo(p, s);
+  const status = [];
+  if (p.alg > 0) status.push(`<span class="badge red">${t('stAlg', { n: p.alg })}</span>`);
+  if (p.sperr > 0) status.push(`<span class="badge red">${t('stSperr', { n: p.sperr })}</span>`);
+  if (p.skip) status.push(`<span class="badge">${t('skipsN', { n: p.skip })}</span>`);
+  if (p.charity) status.push(`<span class="badge purple">${t('charityN', { n: p.charity })}</span>`);
+  if (p.advisor) status.push(`<span class="badge green">${t('stAdvisor')}</span>`);
+  // income
+  const income = incomeLines(p, s).map(([k, v, pr]) => row(esc(t(k, pr)), fmt(v)));
+  for (const a of p.assets.filter(x => assetCf(x) || x.vacant > 0)) income.push(row(`${esc(assetName(a))}${a.vacant > 0 ? ` <small class="neg">${t('vacantN', { n: a.vacant })}</small>` : ''}`, fmt(assetCf(a)), 'pass'));
+  const deds = deductionLines(p, s);
+  const saves = saveLines(p);
+  // assets
   const assets = p.assets.map(a => {
     let d = '';
     if (a.kind === 'stock') d = t('pcs', { n: a.shares, amt: { m: a.cost / a.shares } });
-    else if (a.kind === 'gold') d = t('coinsVal', { n: a.units, amt: { m: a.price } });
+    else if (a.kind === 'gold' || a.kind === 'crypto') d = t('coinsVal', { n: a.units, amt: { m: a.price } });
+    else if (a.kind === 'etf') d = t('etfVal', { val: { m: a.value }, gain: { sm: a.value - a.basis }, m: { m: a.monthly } });
+    else if (a.kind === 'bauspar') d = t(a.ready ? 'bausparReadyV' : 'bausparVal', { val: { m: a.balance }, need: { m: BAUSPAR_READY } });
     else d = a.mortgage ? t('priceLoan', { price: { m: a.price }, loan: { m: a.mortgage } }) : t('priceOnly', { price: { m: a.price } });
-    return `<div class="r"><span>${esc(assetName(a))}<small>${d}</small></span><b class="${a.cf < 0 ? 'neg' : ''}">${a.cf ? sfmt(a.cf) : '–'}</b></div>`;
+    if (R(s).specTax && (IMMO.includes(a.kind) || a.kind === 'gold' || a.kind === 'crypto')) {
+      const free = (a.boughtYear || 1) + (IMMO.includes(a.kind) ? SPEKU_YEARS_IMMO : SPEKU_YEARS_GOLD);
+      d += ` · ${p.year >= free ? t('taxFreeNow') : t('taxFreeFrom', { n: free })}`;
+    }
+    let ctl = '';
+    if (a.kind === 'etf' && can) ctl = `<div class="etfctl"><input type="number" step="50" min="0" value="${a.monthly}" id="etfamt"> <button class="btn tiny" data-act="etfSet" data-pid="${p.id}">${t('etfSetBtn')}</button><button class="btn tiny ghost" data-act="etfSell" data-pid="${p.id}" title="${esc(t('etfSellHint', { tax: { m: etfSaleTax(p, a, s) } }))}">${t('etfSellBtn', { amt: { m: Math.round(a.value) - etfSaleTax(p, a, s) } })}</button></div>`;
+    return `<div class="r"><span>${esc(assetName(a))}<small>${d}</small>${ctl}</span><b class="${assetCf(a) < 0 ? 'neg' : ''}">${assetCf(a) ? sfmt(assetCf(a)) : '–'}</b></div>`;
   }).join('') || `<p class="muted">${t('noAssets')}</p>`;
+  const home = p.homeValue ? `<div class="r"><span>🏡 ${t('ownHome')}<small>${t('ownHomeHint')}</small></span><b>${fmt(p.homeValue)}</b></div>` : '';
   const debts = Object.entries(p.debts).filter(([, d]) => d.bal).map(([k, d]) =>
     `<div class="r"><span>${t('debt_' + k)}<small>${t('perMonth', { amt: { m: d.pay } })}</small></span><b>${fmt(d.bal)}</b>${can ? `<button class="btn tiny" data-act="repay" data-which="${k}" data-pid="${p.id}" title="${t('payOffTitle')}">${t('payOff')}</button>` : ''}</div>`).join('');
-  el.innerHTML = `${head}${p.skip ? ` · ${t('skipsN', { n: p.skip })}` : ''}${p.charity ? ` · ${t('charityN', { n: p.charity })}` : ''}</span></div>
-    <div class="big3"><div><small>${t('cash')}</small><b>${fmt(p.cash)}</b></div><div><small>${t('paydayCf')}</small><b class="${cf < 0 ? 'neg' : 'pos'}">${sfmt(cf)}</b></div><div><small>${t('kids')}</small><b>${p.children}</b></div></div>
-    <div class="prog"><i style="width:${Math.min(100, pas / exp * 100)}%"></i><span>${t('progress', { pas: { m: pas }, exp: { m: exp }, rest: pas > exp ? t('escape') : t('stillNeed', { amt: { m: exp - pas } }) })}</span></div>
-    <details open><summary>${t('income')} <b>${fmt(totalIncome(p))}</b></summary>${income.join('')}</details>
-    <details open><summary>${t('expenses')} <b>${fmt(exp)}</b></summary>${expenseLines(p).map(([k, v, pr]) => row(esc(t(k, pr)), fmt(v))).join('')}</details>
-    <details open><summary>${t('assets')}</summary>${assets}</details>
+  // tax advisor box
+  let advisor = '';
+  const pot = R(s).afa && pi.gross ? afaPotential(p, s) : 0;
+  if (pot > 0 || p.advisor) {
+    advisor = p.advisor
+      ? `<div class="advisor on">🧾 ${t('advisorOn', { amt: { m: pi.afaSave }, rate: Math.round(pi.mrate * 100) })}${can ? ` <button class="btn tiny ghost" data-act="advisor" data-pid="${p.id}">${t('advisorFire')}</button>` : ''}</div>`
+      : `<div class="advisor">🧾 ${t('advisorOff', { amt: { m: pot }, fee: { m: ADVISOR_FEE }, m: { m: ADVISOR_MONTH }, rate: Math.round(pi.mrate * 100) })}${can ? ` <button class="btn tiny" data-act="advisor" data-on="1" data-pid="${p.id}">${t('advisorHire')}</button>` : ''}</div>`;
+  }
+  el.innerHTML = `${head} · 📅 ${t('yearN', { n: p.year })}</span>${status.length ? `<div class="badges">${status.join('')}</div>` : ''}</div>
+    <div class="big3"><div><small>${t('cash')}</small><b>${fmt(p.cash)}</b></div><div><small>${t('paydayCf')}</small><b class="${cf < 0 ? 'neg' : 'pos'}">${sfmt(cf)}</b></div><div><small>${t('netWorth')}</small><b>${fmt(netWorth(p, s))}</b></div></div>
+    <div class="escape">
+      <div class="prog"><i style="width:${Math.min(100, pas / target * 100)}%"></i><span>${t('progress', { pas: { m: pas }, exp: { m: target }, rest: pas > target ? t('escape') : t('stillNeed', { amt: { m: target - pas } }) })}</span></div>
+      <small>${t(health ? 'escapeBreak' : 'escapeBreakNoHealth', { living: { m: living }, health: { m: health }, total: { m: target } })}</small>
+    </div>
+    <details open><summary>${t('income')} <b>${fmt(totalIncome(p, s))}</b></summary>${income.join('')}</details>
+    ${deds.length ? `<details open><summary>${t('deductions')} <b>${fmt(deds.reduce((x, [, v]) => x + v, 0))}</b></summary>${lines(deds)}</details>` : ''}
+    <details open><summary>${t('livingCosts')} <b>${fmt(living)}</b></summary>${lines(livingLines(p))}</details>
+    ${saves.length ? `<details open><summary>${t('savingsPlans')} <b>${fmt(saves.reduce((x, [, v]) => x + v, 0))}</b></summary>${lines(saves)}</details>` : ''}
+    ${advisor}
+    <details open><summary>${t('assets')}</summary>${assets}${home}</details>
     <details open><summary>${t('liabilities')}</summary>${debts}
       <div class="r"><span>${t('bankLoan')}<small>${t('interestMonth', { amt: { m: loanPay(p) } })}</small></span><b>${fmt(p.loan)}</b></div>
       ${can ? `<div class="loanrow"><input type="number" id="loanamt" step="1000" min="1000" value="1000"><button class="btn small" data-act="loan" data-pid="${p.id}">${t('takeLoan')}</button>${p.loan ? `<button class="btn small ghost" data-act="repay" data-which="loan" data-pid="${p.id}">${t('repay')}</button>` : ''}</div>` : ''}
@@ -503,10 +567,9 @@ function renderWinner() {
   const w = $('#winner');
   if (state.phase !== 'over') { w.hidden = true; return; }
   if (w.dataset.closed === String(state.seq)) return;
-  const p = state.players.find(q => q.id === state.winner?.pid);
   w.hidden = false;
-  w.innerHTML = `<div class="winbox"><div class="trophy">🏆</div><h2>${p ? esc(t('wins', { name: pname(p) })) : t('gameOver')}</h2><p>${state.winner ? esc(t(state.winner.reason.k, state.winner.reason.p)) : ''}</p>
-    ${mode !== 'client' ? `<button class="btn big" id="again">${t('newGame')}</button>` : ''}<button class="btn ghost" id="closewin">${t('viewBoard')}</button></div>`;
+  w.innerHTML = reportHTML(state, mine, pname);
+  w.querySelector('.report').insertAdjacentHTML('beforeend', `<div class="winbtns">${mode !== 'client' ? `<button class="btn big" id="again">${t('newGame')}</button>` : ''}<button class="btn ghost" id="closewin">${t('viewBoard')}</button></div>`);
 }
 
 // ---------- events ----------
@@ -533,6 +596,7 @@ document.addEventListener('click', e => {
   if (d.view) { viewPid = viewPid === d.view ? (state.players.find(mine) || state.players[0]).id : d.view; render(); return; }
   if (d.remove) return dispatch({ type: 'removePlayer', pid: d.remove });
   if (d.color) return dispatch({ type: 'setColor', pid: d.pid, color: d.color });
+  if (d.mode) return dispatch({ type: 'setMode', mode: d.mode });
   if (!d.act) return;
   const c = cur();
   switch (d.act) {
@@ -542,7 +606,11 @@ document.addEventListener('click', e => {
     case 'charity': return dispatch({ type: 'charity', pid: c.id, accept: !!d.accept });
     case 'fastBuy': return dispatch({ type: 'fastBuy', pid: c.id });
     case 'endTurn': return dispatch({ type: 'endTurn', pid: c.id });
-    case 'buy': return dispatch({ type: 'buy', pid: c.id, qty: +($('#qty')?.value || 0) });
+    case 'buy': return dispatch({ type: 'buy', pid: c.id, qty: +($('#qty')?.value || 0), useBauspar: !!d.bauspar });
+    case 'choose': return dispatch({ type: 'choose', pid: c.id, opt: d.opt });
+    case 'advisor': return dispatch({ type: 'advisor', pid: d.pid, on: !!d.on });
+    case 'etfSet': return dispatch({ type: 'etfSet', pid: d.pid, amount: +$('#etfamt').value });
+    case 'etfSell': return dispatch({ type: 'etfSell', pid: d.pid });
     case 'passCard': return dispatch({ type: 'passCard', pid: d.pid });
     case 'sell': {
       const q = document.querySelector(`[data-sellqty="${d.asset}"]`);
@@ -556,6 +624,8 @@ document.addEventListener('change', e => {
   const d = e.target.dataset;
   if (d.dream) dispatch({ type: 'setDream', pid: d.dream, dream: +e.target.value });
   if (d.botlvl) dispatch({ type: 'setBot', pid: d.botlvl, bot: e.target.value });
+  if (d.city) dispatch({ type: 'setCity', pid: d.city, city: e.target.value });
+  if (d.church) dispatch({ type: 'setChurch', pid: d.church, on: e.target.checked });
 });
 
 function setCoach(on) {

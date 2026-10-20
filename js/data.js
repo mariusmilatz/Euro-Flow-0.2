@@ -4,9 +4,43 @@ export const KINDERGELD = 255;          // € pro Kind und Monat
 export const NK_RATE = 0.07;            // Kaufnebenkosten: Grunderwerbsteuer + Notar + Grundbuch
 export const ABGELTUNG = 0.26375;       // 25 % Abgeltungsteuer + Soli
 export const SPARERPAUSCHBETRAG = 1000; // pro Jahr (= 12 Zahltage)
-export const SPEKU_RATE = 0.30;         // vereinfachter persönlicher Steuersatz bei Spekulationsgewinnen
-export const SPEKU_IMMO = 120;          // 10 Jahre = 120 Zahltage
-export const SPEKU_GOLD = 12;           // 1 Jahr = 12 Zahltage
+export const SPEKU_YEARS_IMMO = 4;      // Spielzeit: 1 Runde = 1 Jahr. 4 Runden stehen für die echten 10 Jahre
+export const SPEKU_YEARS_GOLD = 1;      // Gold & Krypto: 1 Jahr (= 1 Runde)
+export const CRYPTO_FREIGRENZE = 1000;  // Krypto-Gewinne unter 1.000 €/Jahr steuerfrei (seit 2024)
+export const ETF_TEILFREI = 0.30;       // Teilfreistellung Aktienfonds
+export const GEZ = 18;                  // Rundfunkbeitrag (18,36 € gerundet)
+export const NOTAR = 0.02;              // Notar + Grundbuch
+export const BUILDING_SHARE = 0.8;      // Gebäudeanteil am Kaufpreis (Rest = Grundstück, nicht abschreibbar)
+export const AFA_RATE = 0.02;           // lineare AfA für Bestandsgebäude
+export const ADVISOR_FEE = 1500, ADVISOR_MONTH = 80; // Steuerberater: einmalig + monatlich
+export const BAUSPAR_READY = 3000;      // Mindestsparguthaben, dann zuteilungsreif
+export const BAUSPAR_RATE = 0.01;       // Bauspardarlehen: 1 %/Monat (Bankkredit: 10 %/Monat)
+export const RATE_STEP = 0.08;          // je Zinsstufe ändern sich Immobilienpreise um 8 %
+
+// Grunderwerbsteuer je Bundesland (2025)
+export const GREST = { BW: 0.05, BY: 0.035, BE: 0.06, BB: 0.065, HB: 0.05, HH: 0.055, HE: 0.06, MV: 0.06, NI: 0.05, NW: 0.065, RP: 0.05, SL: 0.065, SN: 0.055, ST: 0.05, SH: 0.065, TH: 0.05 };
+export const GREST_DEFAULT = 0.05;
+
+// Heimatstadt (nur Modus „Realistisch“): Gehalt & Miete skaliert, Kirchensteuer 8 % in BY/BW, sonst 9 %
+export const CITIES = [
+  { key: 'de', name: 'Germany (average)', nameDe: 'Deutschland (Durchschnitt)', st: null, salaryF: 1, rentF: 1 },
+  { key: 'muc', name: 'Munich', nameDe: 'München', st: 'BY', salaryF: 1.15, rentF: 1.55 },
+  { key: 'str', name: 'Stuttgart', nameDe: 'Stuttgart', st: 'BW', salaryF: 1.12, rentF: 1.3 },
+  { key: 'fra', name: 'Frankfurt', nameDe: 'Frankfurt', st: 'HE', salaryF: 1.12, rentF: 1.35 },
+  { key: 'ham', name: 'Hamburg', nameDe: 'Hamburg', st: 'HH', salaryF: 1.08, rentF: 1.3 },
+  { key: 'ber', name: 'Berlin', nameDe: 'Berlin', st: 'BE', salaryF: 1.0, rentF: 1.25 },
+  { key: 'cgn', name: 'Cologne', nameDe: 'Köln', st: 'NW', salaryF: 1.03, rentF: 1.15 },
+  { key: 'lej', name: 'Leipzig', nameDe: 'Leipzig', st: 'SN', salaryF: 0.92, rentF: 0.85 },
+  { key: 'chm', name: 'Chemnitz', nameDe: 'Chemnitz', st: 'SN', salaryF: 0.88, rentF: 0.7 },
+];
+export const churchRate = st => (st === 'BY' || st === 'BW' ? 0.08 : 0.09);
+
+// Spielmodi
+export const MODES = {
+  easy:      { health: false, yearly: true,  specTax: false, afa: false, inflation: false, city: false },
+  classic:   { health: true,  yearly: true,  specTax: true,  afa: true,  inflation: false, city: false },
+  realistic: { health: true,  yearly: true,  specTax: true,  afa: true,  inflation: true,  city: true },
+};
 
 export const COLORS = ['#e63946', '#2a9df4', '#2ec4b6', '#f4a261', '#9b5de5', '#ff70a6'];
 export const COLOR_NAMES = ['Rot', 'Blau', 'Türkis', 'Orange', 'Lila', 'Pink'];
@@ -30,31 +64,21 @@ export const RAT_INFO = {
 
 // ---------- Berufe (Monatswerte in €) ----------
 // debts: [Restschuld, Monatsrate]
+// Monatswerte in €. Steuern & Sozialabgaben werden aus dem Brutto berechnet (tax.js).
+// pkv = Beamte zahlen private Krankenversicherung statt Sozialversicherung. debts: [Restschuld, Monatsrate]
 export const PROFESSIONS = [
-  { key: 'hausmeister', name: 'Hausmeister/in', salary: 2800, tax: 230, social: 590, socialLabel: 'Sozialversicherung', rent: 650, other: 620, childPer: 380, savings: 700,
-    debts: { auto: [4000, 100], karte: [2000, 60], raten: [1000, 50] } },
-  { key: 'pflege', name: 'Pflegefachkraft', salary: 3600, tax: 400, social: 760, socialLabel: 'Sozialversicherung', rent: 750, other: 750, childPer: 400, savings: 800,
-    debts: { bafoeg: [6000, 80], auto: [5000, 120], karte: [2500, 70], raten: [1000, 50] } },
-  { key: 'bus', name: 'Busfahrer/in', salary: 3100, tax: 300, social: 650, socialLabel: 'Sozialversicherung', rent: 700, other: 680, childPer: 380, savings: 600,
-    debts: { auto: [4500, 110], karte: [2000, 60], raten: [1000, 50] } },
-  { key: 'buero', name: 'Bürokaufmann/-frau', salary: 3300, tax: 340, social: 700, socialLabel: 'Sozialversicherung', rent: 720, other: 700, childPer: 390, savings: 900,
-    debts: { auto: [5000, 120], karte: [3000, 80], raten: [1500, 60] } },
-  { key: 'kfz', name: 'Kfz-Mechatroniker/in', salary: 3200, tax: 320, social: 670, socialLabel: 'Sozialversicherung', rent: 680, other: 650, childPer: 380, savings: 500,
-    debts: { auto: [10000, 200], karte: [2500, 70], raten: [1500, 60] } },
-  { key: 'polizei', name: 'Polizist/in (Beamte)', salary: 4000, tax: 560, social: 250, socialLabel: 'Private Krankenversicherung', rent: 800, other: 1150, childPer: 420, savings: 1000,
-    debts: { auto: [7000, 150], karte: [3000, 80], raten: [1500, 60] } },
-  { key: 'lehrer', name: 'Lehrer/in (verbeamtet)', salary: 4900, tax: 850, social: 300, socialLabel: 'Private Krankenversicherung', rent: 950, other: 1300, childPer: 450, savings: 1200,
-    debts: { bafoeg: [8000, 100], auto: [9000, 180], karte: [3500, 90], raten: [2000, 70] } },
-  { key: 'dev', name: 'Softwareentwickler/in', salary: 5500, tax: 1000, social: 1050, socialLabel: 'Sozialversicherung', rent: 1300, other: 1100, childPer: 480, savings: 2000,
-    debts: { bafoeg: [8000, 100], karte: [5000, 120], raten: [3000, 100] } },
-  { key: 'ing', name: 'Ingenieur/in', salary: 6000, tax: 1150, social: 1100, socialLabel: 'Sozialversicherung', rent: 0, other: 1000, childPer: 500, savings: 1500,
-    debts: { baufi: [280000, 1400], bafoeg: [10000, 120], auto: [15000, 300], karte: [4000, 100], raten: [2000, 80] } },
-  { key: 'anwalt', name: 'Rechtsanwalt/-anwältin', salary: 7500, tax: 1900, social: 1200, socialLabel: 'Sozialversicherung', rent: 0, other: 1200, childPer: 550, savings: 2500,
-    debts: { baufi: [370000, 1800], auto: [18000, 350], karte: [5000, 130], raten: [2500, 90] } },
-  { key: 'arzt', name: 'Ärztin/Arzt', salary: 9500, tax: 2600, social: 1300, socialLabel: 'Sozialversicherung', rent: 0, other: 1500, childPer: 650, savings: 3500,
-    debts: { baufi: [480000, 2300], auto: [25000, 450], karte: [6000, 150], raten: [3000, 100] } },
-  { key: 'pilot', name: 'Pilot/in', salary: 10500, tax: 3000, social: 1350, socialLabel: 'Sozialversicherung', rent: 0, other: 1600, childPer: 600, savings: 3000,
-    debts: { baufi: [500000, 2400], auto: [28000, 500], karte: [6000, 160], raten: [3500, 120] } },
+  { key: 'hausmeister', salary: 2800, rent: 650, car: 180, ins: 60, other: 420, childPer: 380, savings: 700, debts: { auto: [4000, 100], karte: [2000, 60], raten: [1000, 50] } },
+  { key: 'pflege', salary: 3600, rent: 750, car: 200, ins: 70, other: 500, childPer: 400, savings: 800, debts: { bafoeg: [6000, 80], auto: [5000, 120], karte: [2500, 70], raten: [1000, 50] } },
+  { key: 'bus', salary: 3100, rent: 700, car: 190, ins: 60, other: 460, childPer: 380, savings: 600, debts: { auto: [4500, 110], karte: [2000, 60], raten: [1000, 50] } },
+  { key: 'buero', salary: 3300, rent: 720, car: 180, ins: 70, other: 480, childPer: 390, savings: 900, debts: { auto: [5000, 120], karte: [3000, 80], raten: [1500, 60] } },
+  { key: 'kfz', salary: 4100, rent: 850, car: 350, ins: 90, other: 550, childPer: 400, savings: 2500, debts: { karte: [2500, 70], raten: [1500, 60] } },
+  { key: 'polizei', salary: 4000, pkv: 250, rent: 800, car: 220, ins: 90, other: 650, childPer: 420, savings: 1000, debts: { auto: [7000, 150], karte: [3000, 80], raten: [1500, 60] } },
+  { key: 'lehrer', salary: 4900, pkv: 300, rent: 950, car: 250, ins: 100, other: 750, childPer: 450, savings: 1200, debts: { bafoeg: [8000, 100], auto: [9000, 180], karte: [3500, 90], raten: [2000, 70] } },
+  { key: 'dev', salary: 6250, rent: 1200, car: 450, ins: 120, other: 600, childPer: 480, savings: 4500, debts: { bafoeg: [8000, 100], karte: [5000, 120], raten: [3000, 100] } },
+  { key: 'ing', salary: 6000, rent: 0, car: 300, ins: 110, other: 700, childPer: 500, savings: 1500, debts: { baufi: [280000, 1400], bafoeg: [10000, 120], auto: [15000, 300], karte: [4000, 100], raten: [2000, 80] } },
+  { key: 'anwalt', salary: 7500, rent: 0, car: 350, ins: 130, other: 800, childPer: 550, savings: 2500, debts: { baufi: [370000, 1800], auto: [18000, 350], karte: [5000, 130], raten: [2500, 90] } },
+  { key: 'arzt', salary: 9500, rent: 0, car: 400, ins: 160, other: 1000, childPer: 650, savings: 3500, debts: { baufi: [480000, 2300], auto: [25000, 450], karte: [6000, 150], raten: [3000, 100] } },
+  { key: 'pilot', salary: 10500, rent: 0, car: 400, ins: 180, other: 1100, childPer: 600, savings: 3000, debts: { baufi: [500000, 2400], auto: [28000, 500], karte: [6000, 160], raten: [3500, 120] } },
 ];
 
 export const DEBT_LABELS = {
@@ -63,6 +87,8 @@ export const DEBT_LABELS = {
   auto: 'Autokredit',
   karte: 'Kreditkarte / Dispo',
   raten: 'Ratenkäufe (0 %-Finanzierung)',
+  leasing: 'Leasingvertrag',
+  bauspar: 'Bauspardarlehen',
 };
 
 // ---------- Aktien & ETFs (fiktiv) ----------
@@ -102,19 +128,19 @@ export const SMALL = [
   split('AWK', 2, 'Die Autowerk-Aktie wird 2:1 gesplittet. Wer sie besitzt, hat jetzt doppelt so viele Aktien. Niemand darf jetzt kaufen oder verkaufen.'),
   split('TEK', 2, 'Tekno Software splittet 2:1. Aktionäre haben doppelt so viele Aktien.'),
   split('SOL', 0.5, 'Solaris Energie muss Aktien 1:2 zusammenlegen. Aktionäre haben nur noch halb so viele Aktien.'),
-  { type: 'asset', kind: 'etw', name: 'Eigentumswohnung 2 Zi., Leipzig', price: 60000, down: 5000, cf: 160,
+  { type: 'asset', kind: 'etw', st: 'SN', name: 'Eigentumswohnung 2 Zi., Leipzig', price: 60000, down: 5000, cf: 160,
     title: 'Eigentumswohnung – Leipzig', text: 'Vermietete 2-Zimmer-Wohnung im sanierten Altbau. Der Eigentümer zieht zu seinen Kindern.' },
-  { type: 'asset', kind: 'etw', name: 'Eigentumswohnung 1 Zi., Gelsenkirchen', price: 45000, down: 4000, cf: 120,
+  { type: 'asset', kind: 'etw', st: 'NW', name: 'Eigentumswohnung 1 Zi., Gelsenkirchen', price: 45000, down: 4000, cf: 120,
     title: 'Zwangsversteigerung – Gelsenkirchen', text: 'Kleine Wohnung aus einer Zwangsversteigerung. Mieter wohnt schon 12 Jahre drin.' },
-  { type: 'asset', kind: 'etw', name: 'Eigentumswohnung 3 Zi., Magdeburg', price: 75000, down: 5000, cf: 200,
+  { type: 'asset', kind: 'etw', st: 'ST', name: 'Eigentumswohnung 3 Zi., Magdeburg', price: 75000, down: 5000, cf: 200,
     title: 'Eigentumswohnung – Magdeburg', text: 'Erbengemeinschaft will schnell verkaufen. Gute Lage nahe der Uni.' },
-  { type: 'asset', kind: 'etw', name: 'Eigentumswohnung 2 Zi., Chemnitz', price: 40000, down: 3000, cf: 90,
+  { type: 'asset', kind: 'etw', st: 'SN', name: 'Eigentumswohnung 2 Zi., Chemnitz', price: 40000, down: 3000, cf: 90,
     title: 'Eigentumswohnung – Chemnitz', text: 'Günstige Wohnung, aber die Hausverwaltung ist schlecht organisiert.' },
-  { type: 'asset', kind: 'etw', name: 'Apartment, Duisburg', price: 50000, down: 4000, cf: -40,
+  { type: 'asset', kind: 'etw', st: 'NW', name: 'Apartment, Duisburg', price: 50000, down: 4000, cf: -40,
     title: 'Leerstehendes Apartment – Duisburg', text: 'Steht seit 8 Monaten leer. Vielleicht findest du einen Mieter – vielleicht nicht.' },
-  { type: 'asset', kind: 'etw', name: 'Studentenapartment, Göttingen', price: 70000, down: 5000, cf: 220,
+  { type: 'asset', kind: 'etw', st: 'NI', name: 'Studentenapartment, Göttingen', price: 70000, down: 5000, cf: 220,
     title: 'Studentenapartment – Göttingen', text: 'Möbliertes Mikroapartment, immer vermietet. Verkäufer braucht Geld für die Scheidung.' },
-  { type: 'asset', kind: 'land', name: 'Bauerwartungsland 1.000 m², Brandenburg', price: 5000, down: 5000, cf: 0,
+  { type: 'asset', kind: 'land', st: 'BB', name: 'Bauerwartungsland 1.000 m², Brandenburg', price: 5000, down: 5000, cf: 0,
     title: 'Grundstück – Brandenburg', text: 'Ackerland am Ortsrand. Wenn die Gemeinde es zu Bauland macht, steigt der Wert enorm.' },
   { type: 'asset', kind: 'gold', name: 'Krügerrand-Goldmünzen', units: 10, unitPrice: 400, cf: 0,
     title: 'Goldmünzen', text: 'Ein Sammler verkauft 10 Krügerrand-Münzen zu je 400 € (Notverkauf). Tipp: Physisches Gold ist nach 1 Jahr steuerfrei.' },
@@ -131,33 +157,46 @@ export const SMALL = [
   { type: 'payIf', kinds: ['etw'], amount: 1500, title: 'Sonderumlage!', text: 'Die Eigentümerversammlung beschließt ein neues Dach. Wenn du eine Eigentumswohnung besitzt, zahle 1.500 €.' },
   { type: 'payIf', kinds: ['etw', 'haus', 'mfh'], amount: 800, title: 'Mieter zahlt nicht', text: 'Dein Mieter zahlt seit 2 Monaten nicht. Wenn du vermietete Immobilien besitzt, zahle 800 € für den Anwalt.' },
   { type: 'gain', amount: 1200, title: 'Steuererstattung!', text: 'Du hast endlich deine Steuererklärung gemacht (Werbungskosten, Homeoffice-Pauschale). Das Finanzamt erstattet 1.200 €.' },
+  // --- neue Karten ---
+  { type: 'etfplan', title: 'ETF-Sparplan', text: 'Deine Bank bietet einen kostenlosen Sparplan auf einen Welt-ETF (MSCI World). Lege fest, wie viel jeden Zahltag automatisch investiert wird – jederzeit änderbar oder pausierbar.' },
+  { type: 'etfplan', title: 'ETF-Sparplan – Neobroker-Aktion', text: 'Ein Neobroker schenkt dir die Ordergebühren. Starte oder erhöhe einen Sparplan auf den Welt-ETF.' },
+  { type: 'asset', kind: 'crypto', code: 'btc', name: 'Bitcoin (Bruchteile)', units: 4, unitPrice: 500, cf: 0,
+    title: 'Krypto-Dip: Bitcoin', text: 'Bitcoin ist nach einem Crash günstig: 4 Anteile zu je 500 €. In Deutschland sind Gewinne nach 1 Jahr Haltedauer steuerfrei (§23 EStG).' },
+  { type: 'asset', kind: 'crypto', code: 'eth', name: 'Ethereum (Bruchteile)', units: 10, unitPrice: 300, cf: 0,
+    title: 'Krypto: Ethereum', text: 'Ein Freund schwärmt von Ethereum: 10 Anteile zu je 300 €. Sehr schwankend – nur mit Geld, das du entbehren kannst.' },
+  { type: 'bauspar', monthly: 150, title: 'Bausparvertrag', text: 'Die Bausparkasse bietet einen Vertrag: Du sparst jeden Zahltag 150 €. Ab 3.000 € Guthaben ist er zuteilungsreif – dann bekommst du beim Immobilienkauf ein günstiges Bauspardarlehen (1 %/Monat statt 10 %).' },
+  { type: 'asset', kind: 'coop', name: 'Genossenschaftsanteile Volksbank', price: 2000, down: 2000, cf: 5,
+    title: 'Genossenschaftsanteile', text: 'Werde Mitglied deiner Volksbank: 2.000 € Anteile, rund 3 % Dividende im Jahr. Sicher, aber klein.' },
+  { type: 'asset', kind: 'coop', name: 'Anteile Wohnungsgenossenschaft', price: 3000, down: 3000, cf: 8,
+    title: 'Wohnungsgenossenschaft', text: 'Eine Wohnungsgenossenschaft sucht Mitglieder: 3.000 € Anteile, solide Dividende, Mitspracherecht.' },
+  { type: 'badTenant', title: 'Mietnomade!', text: 'Ein Mieter zahlt nicht mehr. Eine Räumung dauert in Deutschland Monate (Mieterschutz). Wenn du vermietete Immobilien besitzt: Eine davon bringt 3 Zahltage lang keine Miete.' },
 ];
 
 // ---------- GROSSE DEALS (ab 6.000 € Eigenkapital) ----------
 export const BIG = [
-  { type: 'asset', kind: 'haus', name: 'Reihenhaus, Hannover', price: 180000, down: 25000, cf: 250,
+  { type: 'asset', kind: 'haus', st: 'NI', name: 'Reihenhaus, Hannover', price: 180000, down: 25000, cf: 250,
     title: 'Reihenhaus zur Vermietung', text: 'Vermietetes Reihenhaus mit kleinem Garten. Familie wohnt seit 5 Jahren drin.' },
-  { type: 'asset', kind: 'haus', name: 'Doppelhaushälfte, Kassel', price: 150000, down: 20000, cf: 350,
+  { type: 'asset', kind: 'haus', st: 'HE', name: 'Doppelhaushälfte, Kassel', price: 150000, down: 20000, cf: 350,
     title: 'Doppelhaushälfte – Notverkauf', text: 'Wegen Scheidung muss schnell verkauft werden. Mieter zahlt zuverlässig.' },
-  { type: 'asset', kind: 'haus', name: 'Einfamilienhaus mit Sanierungsstau, Saarland', price: 110000, down: 15000, cf: 100,
+  { type: 'asset', kind: 'haus', st: 'SL', name: 'Einfamilienhaus mit Sanierungsstau, Saarland', price: 110000, down: 15000, cf: 100,
     title: 'Einfamilienhaus (Sanierungsfall)', text: 'Alte Ölheizung, Fenster aus den 80ern – aber günstig. Geduld zahlt sich aus.' },
-  { type: 'asset', kind: 'haus', name: 'Einfamilienhaus, Bielefeld', price: 200000, down: 25000, cf: 400,
+  { type: 'asset', kind: 'haus', st: 'NW', name: 'Einfamilienhaus, Bielefeld', price: 200000, down: 25000, cf: 400,
     title: 'Einfamilienhaus', text: 'Solides Haus in ruhiger Lage. Der Eigentümer zieht ins Pflegeheim.' },
-  { type: 'asset', kind: 'mfh', name: 'Mehrfamilienhaus 4 WE, Dortmund', units: 4, price: 320000, down: 35000, cf: 900,
+  { type: 'asset', kind: 'mfh', st: 'NW', name: 'Mehrfamilienhaus 4 WE, Dortmund', units: 4, price: 320000, down: 35000, cf: 900,
     title: 'Mehrfamilienhaus – 4 Wohnungen', text: 'Gepflegtes Haus aus den 60ern, alle Wohnungen vermietet. Finanzierung bereits zugesagt.' },
-  { type: 'asset', kind: 'mfh', name: 'Mehrfamilienhaus 4 WE, Halle', units: 4, price: 240000, down: 30000, cf: 750,
+  { type: 'asset', kind: 'mfh', st: 'ST', name: 'Mehrfamilienhaus 4 WE, Halle', units: 4, price: 240000, down: 30000, cf: 750,
     title: 'Mehrfamilienhaus – Zwangsverkauf', text: 'Eigentümer hat Steuerschulden beim Finanzamt. Unterlagen unvollständig.' },
-  { type: 'asset', kind: 'mfh', name: 'Mehrfamilienhaus 4 WE, Wuppertal', units: 4, price: 280000, down: 30000, cf: 600,
+  { type: 'asset', kind: 'mfh', st: 'NW', name: 'Mehrfamilienhaus 4 WE, Wuppertal', units: 4, price: 280000, down: 30000, cf: 600,
     title: 'Mehrfamilienhaus – 4 Wohnungen', text: 'Liegt an einer lauten Straße, aber die Mieten sind stabil.' },
-  { type: 'asset', kind: 'mfh', name: 'Altbau 8 WE, Chemnitz', units: 8, price: 450000, down: 50000, cf: 1700,
+  { type: 'asset', kind: 'mfh', st: 'SN', name: 'Altbau 8 WE, Chemnitz', units: 8, price: 450000, down: 50000, cf: 1700,
     title: 'Altbau mit 8 Wohnungen', text: 'Gründerzeit-Altbau, teilsaniert. Professionelle Hausverwaltung übernimmt alles.' },
-  { type: 'asset', kind: 'mfh', name: 'Mehrfamilienhaus 8 WE, Bremen', units: 8, price: 600000, down: 70000, cf: 1900,
+  { type: 'asset', kind: 'mfh', st: 'HB', name: 'Mehrfamilienhaus 8 WE, Bremen', units: 8, price: 600000, down: 70000, cf: 1900,
     title: 'Mehrfamilienhaus – 8 Wohnungen', text: 'Rentner-Ehepaar verkauft zum Gutachterwert. Komplette Unterlagen vorhanden.' },
-  { type: 'asset', kind: 'mfh', name: 'Mehrfamilienhaus 8 WE, Gera', units: 8, price: 380000, down: 40000, cf: 1500,
+  { type: 'asset', kind: 'mfh', st: 'TH', name: 'Mehrfamilienhaus 8 WE, Gera', units: 8, price: 380000, down: 40000, cf: 1500,
     title: 'Mehrfamilienhaus – Paketverkauf', text: 'Ein Investor löst sein Portfolio auf und braucht schnell Liquidität.' },
-  { type: 'asset', kind: 'mfh', name: 'Wohnblock 12 WE, Salzgitter', units: 12, price: 720000, down: 80000, cf: 2800,
+  { type: 'asset', kind: 'mfh', st: 'NI', name: 'Wohnblock 12 WE, Salzgitter', units: 12, price: 720000, down: 80000, cf: 2800,
     title: 'Wohnblock mit 12 Wohnungen', text: 'Großer Block, solide Mieter, Aufzug muss in 3 Jahren erneuert werden.' },
-  { type: 'asset', kind: 'fewo', name: 'Ferienwohnung an der Ostsee', price: 220000, down: 30000, cf: 450,
+  { type: 'asset', kind: 'fewo', st: 'MV', name: 'Ferienwohnung an der Ostsee', price: 220000, down: 30000, cf: 450,
     title: 'Ferienwohnung – Ostsee', text: 'Meerblick in Kühlungsborn. Im Sommer ausgebucht, im Winter leer.' },
   { type: 'asset', kind: 'gewerbe', name: 'Gewerbehalle mit Mieter', price: 400000, down: 50000, cf: 2100,
     title: 'Gewerbeimmobilie', text: 'Logistikhalle mit 10-Jahres-Mietvertrag an einen Paketdienst.' },
@@ -180,6 +219,14 @@ export const BIG = [
   { type: 'payIf', kinds: ['mfh'], amount: 5000, title: 'Heizungsgesetz!', text: 'In einem Mehrfamilienhaus fällt die alte Gasheizung aus. Neue Wärmepumpe nötig: Wenn du ein Mehrfamilienhaus besitzt, zahle 5.000 €.' },
   { type: 'payIf', kinds: ['etw', 'haus', 'mfh', 'fewo'], amount: 1000, title: 'Mieter verwüstet Wohnung', text: 'Nach dem Auszug ist die Wohnung kaputt. Die Kaution reicht nicht. Wenn du vermietete Immobilien besitzt, zahle 1.000 €.' },
   { type: 'payIf', kinds: ['etw', 'haus', 'mfh', 'fewo', 'gewerbe', 'land'], amount: 300, perAsset: true, title: 'Grundsteuer-Reform', text: 'Die neue Grundsteuer kommt. Zahle 300 € für jede Immobilie, die du besitzt.' },
+  // --- neue Karten ---
+  { type: 'asset', kind: 'etw', st: 'SN', name: 'Denkmalgeschützte Altbauwohnung, Görlitz', price: 120000, down: 20000, cf: 150, afa: 0.09,
+    title: 'Denkmalschutz-Wohnung', text: 'Sanierte Gründerzeitwohnung unter Denkmalschutz. Mit Steuerberater: 9 % Sonder-AfA pro Jahr (§7i EStG) statt 2 % – ideal bei hohem Steuersatz. Achtung: Sanierst du in den ersten 3 Jahren selbst für mehr als 15 % des Gebäudewerts, musst du die Kosten über Jahre abschreiben.' },
+  { type: 'asset', kind: 'biz', code: 'mittel', name: 'Stille Beteiligung: Maschinenbauer (Mittelstand)', price: 50000, down: 50000, cf: 650,
+    title: 'Mittelstand sucht stillen Teilhaber', text: 'Ein Familienunternehmen aus dem Schwarzwald baut eine neue Halle und sucht eine stille Beteiligung mit fester Gewinnbeteiligung.' },
+  { type: 'asset', kind: 'biz', code: 'mittel', name: 'Stille Beteiligung: Logistik-Mittelständler', price: 80000, down: 80000, cf: 1000,
+    title: 'Stille Beteiligung: Logistik', text: 'Eine Spedition mit 120 Lkw sucht Kapital für E-Lkw. Stille Beteiligung mit rund 15 % Rendite.' },
+  { type: 'badTenant', title: 'Mietnomade im Mietobjekt', text: 'In einem deiner vermieteten Objekte zahlt ein Mieter nicht mehr. Die Räumungsklage dauert: 3 Zahltage ohne diese Miete.' },
 ];
 
 // ---------- MARKT ----------
@@ -215,6 +262,19 @@ export const MARKET = [
   { type: 'payIf', kinds: ['etw', 'haus', 'mfh', 'fewo', 'gewerbe'], amount: 2000, title: 'Wasserrohrbruch', text: 'Nur wer diese Karte zieht: Wenn du Immobilien besitzt, zahle 2.000 € (Selbstbeteiligung der Versicherung).' },
   { type: 'payIf', kinds: ['biz'], amount: 1500, title: 'Betriebsprüfung light', text: 'Nur wer diese Karte zieht: Wenn du ein Unternehmen besitzt, kostet dich der Steuerberater 1.500 € extra.' },
   { type: 'gain', amount: 0, title: 'Ruhiger Markt', text: 'Nichts passiert. Die Märkte warten auf die nächste Zinsentscheidung der EZB.' },
+  // --- neue Karten ---
+  sell('crypto', 'btc', { perUnit: 2000 }, 'Bitcoin-Rallye!', 'Ein Halving-Jahr: Bitcoin vervierfacht sich. Käufer zahlen 2.000 € pro Anteil.'),
+  sell('crypto', 'btc', { perUnit: 900 }, 'Bitcoin steigt', 'Käufer zahlen 900 € pro Bitcoin-Anteil.'),
+  sell('crypto', 'eth', { perUnit: 900 }, 'Ethereum-Boom', 'Käufer zahlen 900 € pro Ethereum-Anteil.'),
+  sell('crypto', null, { perUnit: 120 }, 'Krypto-Crash', 'Eine große Kryptobörse ist pleite. Panikverkäufer bekommen nur 120 € pro Anteil.'),
+  sell('biz', 'mittel', { price: 120000 }, 'Familie kauft zurück', 'Die Unternehmerfamilie kauft stille Teilhaber für 120.000 € heraus.'),
+  { type: 'rate', delta: -1, title: 'EZB senkt den Leitzins', text: 'Kredite werden günstiger, Immobilien gefragter: Alle Immobilienpreise auf Käuferkarten steigen um 8 %.' },
+  { type: 'rate', delta: -1, title: 'Bauzinsen fallen', text: 'Die Baufinanzierung wird billiger. Immobilienpreise auf Käuferkarten steigen um 8 %.' },
+  { type: 'rate', delta: 1, title: 'EZB erhöht den Leitzins', text: 'Die EZB bekämpft die Inflation. Kredite werden teurer: Immobilienpreise auf Käuferkarten fallen um 8 %.' },
+  { type: 'rate', delta: 1, title: 'Bauzinsen springen auf 4 %', text: 'Viele Käufer können sich nichts mehr leisten. Immobilienpreise auf Käuferkarten fallen um 8 %.' },
+  { type: 'index', pct: 15, title: 'Börsenrallye', text: 'Der Welt-ETF steigt um 15 %. Alle ETF-Sparpläne gewinnen.' },
+  { type: 'index', pct: -25, title: 'Crash an den Weltbörsen', text: 'Panik! Der Welt-ETF fällt um 25 %. Wer weiter spart, kauft jetzt günstig nach.' },
+  { type: 'badTenant', title: 'Mietnomade', text: 'Nur wer die Karte zieht: Ein Mieter zahlt nicht. 3 Zahltage keine Miete aus einer deiner Immobilien.' },
 ];
 
 // ---------- SCHNICKSCHNACK (Doodads) ----------
@@ -248,6 +308,12 @@ export const DOODADS = [
   { type: 'finance', debt: 'auto', amount: 8000, pay: 180, title: 'Neues Auto', text: 'Der Händler macht ein „super Angebot“. Autokredit +8.000 €, +180 €/Monat.' },
   { type: 'rentUp', amount: 80, title: 'Indexmiete steigt', text: 'Dein Mietvertrag ist an die Inflation gekoppelt. Wenn du zur Miete wohnst: Miete +80 €/Monat.' },
   { type: 'rentUp', amount: 120, title: 'Umzug in größere Wohnung', text: 'Ihr braucht mehr Platz. Wenn du zur Miete wohnst: Miete +120 €/Monat.' },
+  // --- neue Karten ---
+  pay(75, 'Ordnungsamt: Gehweg nicht geräumt', 'Es hat geschneit und du hast nicht gestreut. Bußgeld 75 €.'),
+  pay(55, 'Müll falsch getrennt', 'Die Plastiktüte im Biomüll war zu viel. Das Ordnungsamt verlangt 55 €.'),
+  pay(250, 'Steuererklärung zu spät', 'Verspätungszuschlag vom Finanzamt: 250 €.'),
+  { type: 'finance', debt: 'leasing', amount: 15000, pay: 420, title: 'Premium-SUV geleast', text: 'Der Nachbar hat einen, also du auch: Premium-SUV-Leasing für 420 €/Monat (Restwert 15.000 €).' },
+  { type: 'choice', key: 'burnout', title: 'Ärger im Job', text: 'Dein Chef macht dir das Leben schwer. A) Du kündigst selbst: 3 Zahltage Sperrzeit (kein Gehalt, kein Arbeitslosengeld), danach ein neuer Job mit +10 % Gehalt. B) Du bleibst: Coaching und Urlaub kosten 800 €.' },
 ];
 
 // ---------- ÜBERHOLSPUR (äußerer Ring, 36 Felder, im Uhrzeigersinn ab oben links) ----------
