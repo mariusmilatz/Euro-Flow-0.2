@@ -18,7 +18,8 @@ export function fastRect(i) {
 // Winkel (Grad, SVG: im Uhrzeigersinn ab +x). START liegt unten (90°), es geht im Uhrzeigersinn nach links.
 const ratAngle = i => 90 + (i + 0.5) * (360 / RAT.length);
 const pt = (r, deg) => [CX + r * Math.cos(deg * Math.PI / 180), CY + r * Math.sin(deg * Math.PI / 180)];
-export function ratPoint(i) { return i < 0 ? [CX, CY + R1 + 4] : pt(RM, ratAngle(i)); }
+export const START_PT = [CX, CY + R0 - 80];
+export function ratPoint(i) { return i < 0 ? START_PT : pt(RM, ratAngle(i)); }
 
 function wrap(text, max) {
   const words = String(text).split(/\s+/); const lines = []; let cur = '';
@@ -38,15 +39,16 @@ function wedge(i) {
   const flip = mid > 90 && mid < 270;            // linke Hälfte: Text drehen, damit er lesbar bleibt
   const [tx, ty] = pt(RM, mid);
   const rot = flip ? mid + 180 : mid;
-  const fs = info.lines.length > 2 ? 11.5 : 15;
+  // fit the longest line into the ring width (R1 − R0)
+  const longest = Math.max(...info.lines.map(l => l.length));
+  const fs = Math.min(info.lines.length > 2 ? 12 : 16, (R1 - R0 - 16) / (longest * 0.68));
   const lh = fs + 3;
   const lines = info.lines.map((l, k) =>
     `<tspan x="${tx}" dy="${k === 0 ? -((info.lines.length - 1) * lh) / 2 : lh}">${esc(l)}</tspan>`).join('');
-  return `<g class="ratspace" data-rat="${i}">
-    <path d="M${x0},${y0} A${R1},${R1} 0 0 1 ${x1},${y1} L${x2},${y2} A${R0},${R0} 0 0 0 ${x3},${y3} Z" fill="${info.fill}" stroke="#fff" stroke-width="2.5"/>
-    <text x="${tx}" y="${ty}" transform="rotate(${rot} ${tx} ${ty})" text-anchor="middle" dominant-baseline="middle"
-      font-family="Luckiest Guy, Nunito, sans-serif" font-size="${fs}" fill="${info.ink}" letter-spacing=".5">${lines}</text>
-    <title>${esc(info.name)}</title></g>`;
+  return [`<g class="ratspace" data-rat="${i}"><title>${esc(info.name)}</title>
+    <path d="M${x0},${y0} A${R1},${R1} 0 0 1 ${x1},${y1} L${x2},${y2} A${R0},${R0} 0 0 0 ${x3},${y3} Z" fill="${info.fill}" stroke="#fff" stroke-width="2.5"/></g>`,
+    `<text pointer-events="none" x="${tx}" y="${ty}" transform="rotate(${rot} ${tx} ${ty})" text-anchor="middle" dominant-baseline="middle"
+      font-family="Luckiest Guy, Nunito, sans-serif" font-size="${fs.toFixed(1)}" fill="${info.ink}" letter-spacing=".3">${lines}</text>`];
 }
 
 function fastSquare(i) {
@@ -115,16 +117,16 @@ export function boardSVG() {
   ${deckSlot(1175, 350, 250, 150, '#2f6fd6', t('bDoodads'), t('bTrap'), 'doodad')}
   <g font-family="Luckiest Guy, sans-serif" text-anchor="middle">
     <text x="300" y="590" font-size="64">🏎️</text><text x="300" y="650" font-size="17" fill="#3d1d78">${t('bDreamWaits')}</text>
-    <text x="1300" y="590" font-size="64">🏰</text><text x="1300" y="650" font-size="17" fill="#3d1d78">${t('bOnFast')}</text>
   </g>
   <circle cx="${CX}" cy="${CY}" r="${R1 + 10}" fill="#f2c230" stroke="#fff" stroke-width="4"/>
-  ${RAT.map((_, i) => wedge(i)).join('')}
+  ${(() => { const w = RAT.map((_, i) => wedge(i)); return w.map(x => x[0]).join('') + w.map(x => x[1]).join(''); })()}
   <circle cx="${CX}" cy="${CY}" r="${R0}" fill="url(#hub)" stroke="#f2c230" stroke-width="8"/>
   <text x="${CX}" y="${CY - 70}" text-anchor="middle" font-size="96">🐹</text>
   <text x="${CX}" y="${CY + 30}" text-anchor="middle" font-family="Luckiest Guy, sans-serif" font-size="76" fill="url(#logo)" stroke="#2a0f55" stroke-width="10" paint-order="stroke" letter-spacing="2">EURO<tspan font-family="Nunito, sans-serif" font-weight="900" fill="#7df0a6">€</tspan>FLOW</text>
   <text x="${CX}" y="${CY + 78}" text-anchor="middle" font-family="Luckiest Guy, sans-serif" font-size="22" fill="#fff" letter-spacing="1">${t('bOutOf')}</text>
   <text x="${CX}" y="${CY + 112}" text-anchor="middle" font-family="Luckiest Guy, sans-serif" font-size="34" fill="#ffd23f" stroke="#2a0f55" stroke-width="5" paint-order="stroke">${t('bWheel')}</text>
-  <g transform="translate(${CX} ${CY + R1 + 8})"><rect x="-46" y="-6" width="92" height="30" rx="6" fill="#e53935" stroke="#fff" stroke-width="3"/>
+  <line x1="${CX}" y1="${CY + R0 - 2}" x2="${CX}" y2="${CY + R1 + 8}" stroke="#e53935" stroke-width="6" stroke-linecap="round"/>
+  <g transform="translate(${CX} ${CY + R0 - 44})"><rect x="-50" y="-6" width="100" height="30" rx="8" fill="#e53935" stroke="#fff" stroke-width="3"/>
     <text y="16" text-anchor="middle" font-family="Luckiest Guy, sans-serif" font-size="18" fill="#fff">${t('bStart')}</text></g>
   ${FAST.map((_, i) => fastSquare(i)).join('')}
   <g id="marks"></g><g id="tokens"></g>
@@ -132,7 +134,7 @@ export function boardSVG() {
 }
 
 // Dynamische Ebene: Spielfiguren, Besitzmarken, Traum-Markierungen
-export function drawDynamic(svg, s) {
+export function drawDynamic(svg, s, shown) {
   const marks = svg.querySelector('#marks'), tokens = svg.querySelector('#tokens');
   let m = '';
   for (const [idx, pid] of Object.entries(s.fastOwners || {})) {
@@ -151,22 +153,39 @@ export function drawDynamic(svg, s) {
   }
   marks.innerHTML = m;
 
-  let tok = '';
+  // Tokens are kept as persistent elements so CSS can animate each hop.
+  // shown = { pid: {track, pos} } – the position currently displayed (may lag behind the state while walking)
+  const where = p => (shown && shown[p.id]) || p;
   const groups = {};
-  s.players.filter(p => !p.out && s.phase !== 'lobby' && s.phase !== 'order').forEach(p => {
-    const key = p.track + p.pos; (groups[key] = groups[key] || []).push(p);
+  s.players.filter(p => !p.out && s.phase !== 'lobby').forEach(p => {
+    const w = where(p), key = w.track + w.pos; (groups[key] = groups[key] || []).push(p);
   });
+  const live = new Set();
   for (const list of Object.values(groups)) list.forEach((p, k) => {
+    const w = where(p);
     let x, y;
-    if (p.track === 'fast') { const r = fastRect(p.pos); x = r.x + r.w / 2; y = r.y + r.h / 2; }
-    else [x, y] = ratPoint(p.pos);
+    if (w.track === 'fast') { const r = fastRect(w.pos); x = r.x + r.w / 2; y = r.y + r.h / 2; }
+    else [x, y] = ratPoint(w.pos);
     const off = (k - (list.length - 1) / 2) * 22;
     const active = s.players[s.turn]?.id === p.id && s.phase === 'play';
-    tok += `<g class="token${active ? ' active' : ''}" style="transform: translate(${x + off}px, ${y}px)">
-      ${active ? `<circle r="22" fill="none" stroke="#fff" stroke-width="3" class="pulse"/>` : ''}
-      <circle r="16" fill="${p.color}" stroke="#fff" stroke-width="4"/>
-      <text y="6" text-anchor="middle" font-size="16" font-weight="900" fill="#fff">${esc(p.name[0].toUpperCase())}</text>
-      <title>${esc(p.name)}</title></g>`;
+    live.add(p.id);
+    let g = tokens.querySelector(`[data-pid="${p.id}"]`);
+    const pos = `translate(${x + off}px, ${y}px)`;
+    if (!g) {
+      g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.dataset.pid = p.id; g.style.transform = pos; tokens.appendChild(g);
+    }
+    const html = `${active ? `<circle r="22" fill="none" stroke="#fff" stroke-width="3" class="pulse"/>` : ''}
+      <g class="piece"><circle r="16" fill="${p.color}" stroke="#fff" stroke-width="4"/>
+      <text y="6" text-anchor="middle" font-size="16" font-weight="900" fill="#fff">${esc(p.name[0].toUpperCase())}</text></g>
+      <title>${esc(p.name)}</title>`;
+    if (g.dataset.html !== html) { g.innerHTML = html; g.dataset.html = html; }
+    g.setAttribute('class', 'token' + (active ? ' active' : ''));
+    if (g.style.transform !== pos) {
+      g.style.transform = pos;
+      g.classList.remove('hop'); void g.getBBox(); g.classList.add('hop');
+    }
+    if (active && tokens.lastChild !== g) tokens.appendChild(g); // active token on top
   });
-  tokens.innerHTML = tok;
+  for (const g of [...tokens.children]) if (!live.has(g.dataset.pid)) g.remove();
 }

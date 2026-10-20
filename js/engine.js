@@ -150,7 +150,8 @@ function enterFast(s, p) {
   const start = passive(p) * 100;
   p.track = 'fast'; p.pos = 0; p.skip = 0; p.charity = 0;
   p.fast = { start, income: start, goal: start + 50000 };
-  p.cash += start;
+  log(s, 'lReturnCash', { name: p.name, amt: M(p.cash) });
+  p.cash = start; // rat-race cash goes back to the bank, you start with your buyout
   log(s, 'lEnterFast', { name: p.name, amt: M(start), goal: M(p.fast.goal) });
 }
 
@@ -266,16 +267,24 @@ function moveFast(s, p, steps) {
   const sp = FAST[p.pos];
   s.step = 'end';
   switch (sp.type) {
-    case 'biz':
-      if (s.fastOwners[p.pos]) log(s, 'lOwnedBy', { fast: p.pos, owner: s.players.find(q => q.id === s.fastOwners[p.pos])?.name });
-      else s.step = 'fast';
+    case 'biz': {
+      const owner = s.players.find(q => q.id === s.fastOwners[p.pos]);
+      if (!owner) s.step = 'fast';
+      else if (owner.id === p.id) log(s, 'lOwnBiz', { name: p.name, fast: p.pos });
+      else { // landing on someone else's business: pay the owner €50,000
+        const fee = Math.min(50000, Math.max(0, p.cash));
+        p.cash -= fee; owner.cash += fee;
+        log(s, 'lBizFee', { name: p.name, owner: owner.name, fast: p.pos, amt: M(fee) });
+      }
       break;
+    }
     case 'dream':
-      if (p.dream === p.pos) s.step = 'fast';
+      if (s.fastOwners[p.pos]) log(s, 'lOwnedBy', { fast: p.pos, owner: s.players.find(q => q.id === s.fastOwners[p.pos])?.name });
+      else if (p.dream === p.pos) s.step = 'fast';
       else if (s.players.some(q => q.id !== p.id && q.dream === p.pos && !q.out)) {
         s.dreamMarks[p.pos] = (s.dreamMarks[p.pos] || 0) + 1;
         log(s, 'lDreamMark', { name: p.name, fast: p.pos, amt: M(sp.cost) });
-      }
+      } else s.step = 'fast'; // nobody's dream: you may buy it as an extra dream
       break;
     case 'gamble': if (!s.gambleDone[p.pos]) s.step = 'fast'; else log(s, 'lGambleTaken', { fast: p.pos }); break;
     case 'charity': s.step = 'fast'; break;
@@ -472,7 +481,8 @@ export function apply(state, a, from) {
         const c = dreamCost(s, p.pos);
         if (p.cash < c) fail('errDreamCost', { amt: M(c) });
         p.cash -= c; s.fastOwners[p.pos] = p.id;
-        win(s, p, K('winDream', { fast: F(p.pos) }));
+        if (p.dream === p.pos) win(s, p, K('winDream', { fast: F(p.pos) }));
+        else log(s, 'lBuysDream', { name: p.name, fast: p.pos, amt: M(c) });
       } else if (sp.type === 'gamble') {
         if (p.cash < sp.cost) fail('errFastCash');
         p.cash -= sp.cost;

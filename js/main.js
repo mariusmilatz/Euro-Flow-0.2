@@ -23,6 +23,31 @@ let viewPid = null;
 let lastRollSeq = null;
 let lastLogLen = 0;
 
+// ---------- walking animation: pieces hop space by space like on a real board ----------
+const HOP_MS = 260;
+const anim = { shown: {}, timer: null };
+const moving = () => anim.timer != null;
+function syncAnim() {
+  let any = false;
+  for (const p of state.players) {
+    const sh = anim.shown[p.id];
+    if (!sh || sh.track !== p.track || state.phase !== 'play' || p.out) { anim.shown[p.id] = { track: p.track, pos: p.pos }; continue; }
+    if (sh.pos !== p.pos) any = true;
+  }
+  if (any && !anim.timer) anim.timer = setInterval(hop, HOP_MS);
+}
+function hop() {
+  let still = false;
+  for (const p of state.players) {
+    const sh = anim.shown[p.id];
+    if (!sh || sh.pos === p.pos || sh.track !== p.track) continue;
+    sh.pos = (sh.pos + 1) % (sh.track === 'rat' ? RAT.length : FAST.length);
+    if (sh.pos !== p.pos) still = true;
+  }
+  drawDynamic($('#board-svg'), state, anim.shown);
+  if (!still) { clearInterval(anim.timer); anim.timer = null; setTimeout(render, 150); }
+}
+
 // ---------- helpers ----------
 const store = {
   get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
@@ -85,7 +110,7 @@ function onClientMessage(msg) {
 // ---------- computer players (run on host / local device only) ----------
 let botTimer = null, botCardSeen = null, cardSince = 0;
 function scheduleBots() {
-  if (mode === 'client' || !state || botTimer) return;
+  if (mode === 'client' || !state || botTimer || moving()) return;
   if (state.phase !== 'order' && state.phase !== 'play') return;
   const c = cur();
   const delay = state.phase === 'order' ? 650 : state.step === 'card' ? 2200 : 1100;
@@ -107,6 +132,7 @@ function humansDeciding() {
   return state.players.filter(p => !p.bot && !p.out && !(state.card.passed || []).includes(p.id) && p.assets.some(a => sellable(card, a)));
 }
 function botStep() {
+  if (moving()) return;
   if (state.phase === 'order') {
     const b = state.players.find(p => p.bot && state.order.eligible.includes(p.id) && state.order.rolls[p.id] == null);
     if (b) botDo(botAction(state, b));
@@ -210,7 +236,8 @@ function render() {
   if (!viewPid || !state.players.some(p => p.id === viewPid)) viewPid = (state.players.find(mine) || state.players[0]).id;
   const c = cur();
   if (state.phase === 'play' && mine(c) && mode === 'local') viewPid = c.id;
-  drawDynamic($('#board-svg'), state);
+  syncAnim();
+  drawDynamic($('#board-svg'), state, anim.shown);
   renderCoach();
   renderTurn();
   renderCard();
@@ -274,7 +301,8 @@ function renderTurn() {
   }
   if (s.phase === 'over') { el.innerHTML = `<div class="turnhead">${t('gameOver')}</div>${dice}`; return; }
   let act = '';
-  if (c.bot) act = `<p class="muted thinking">${t('botThinking', { name: esc(c.name) })}</p>`;
+  if (moving()) act = `<p class="muted thinking">${t('walking', { name: esc(c.name) })}</p>`;
+  else if (c.bot) act = `<p class="muted thinking">${t('botThinking', { name: esc(c.name) })}</p>`;
   else if (!mine(c)) act = `<p class="muted">${t('waitFor', { name: esc(c.name), color: c.color })}</p>`;
   else switch (s.step) {
     case 'roll':
@@ -296,7 +324,8 @@ function renderTurn() {
     case 'fast': {
       const sp = FAST[c.pos];
       if (sp.type === 'biz') act = `<p class="hint">${t('bizOffer', { fast: c.pos, cost: { m: sp.cost }, cf: { m: sp.cf } })}</p><div class="row"><button class="btn green" data-act="fastBuy">${t('buy')}</button><button class="btn ghost" data-act="endTurn">${t('pass')}</button></div>`;
-      else if (sp.type === 'dream') act = `<p class="hint">${t('dreamOffer', { icon: sp.icon, fast: c.pos, cost: { m: dreamCost(s, c.pos) } })}</p><div class="row"><button class="btn gold" data-act="fastBuy">${t('buyDream')}</button><button class="btn ghost" data-act="endTurn">${t('notYet')}</button></div>`;
+      else if (sp.type === 'dream' && c.dream === c.pos) act = `<p class="hint">${t('dreamOffer', { icon: sp.icon, fast: c.pos, cost: { m: dreamCost(s, c.pos) } })}</p><div class="row"><button class="btn gold" data-act="fastBuy">${t('buyDream')}</button><button class="btn ghost" data-act="endTurn">${t('notYet')}</button></div>`;
+      else if (sp.type === 'dream') act = `<p class="hint">${t('dreamOfferOther', { icon: sp.icon, fast: c.pos, cost: { m: dreamCost(s, c.pos) } })}</p><div class="row"><button class="btn green" data-act="fastBuy">${t('buyExtraDream')}</button><button class="btn ghost" data-act="endTurn">${t('pass')}</button></div>`;
       else if (sp.type === 'gamble') act = `<p class="hint">🎲 ${esc(fastText(c.pos))}</p><div class="row"><button class="btn green" data-act="fastBuy">${t('invest')}</button><button class="btn ghost" data-act="endTurn">${t('pass')}</button></div>`;
       else if (sp.type === 'charity') act = `<p class="hint">💜 ${esc(fastText(c.pos))}</p><div class="row"><button class="btn purple" data-act="fastBuy">${t('foundationBtn')}</button><button class="btn ghost" data-act="endTurn">${t('noThanks')}</button></div>`;
       break;
@@ -304,7 +333,7 @@ function renderTurn() {
     default: act = `<button class="btn big" data-act="endTurn">${t('endTurn')}</button>`;
   }
   const where = c.track === 'rat' ? (c.pos < 0 ? t('start') : t('sp_' + RAT[c.pos])) : fastName(c.pos);
-  el.innerHTML = `<div class="turnhead"><span class="dot" style="background:${c.color}"></span> ${t('isTurn', { name: esc(pname(c)) })} <small>· ${c.track === 'rat' ? t('ratRace') : t('fastTrack')} · ${esc(where)}</small></div>${dice}<div class="actions">${act}</div>`;
+  el.innerHTML = `<div class="turnhead"><span class="dot" style="background:${c.color}"></span> ${t('isTurn', { name: esc(pname(c)) })}<small>${c.track === 'rat' ? t('ratRace') : t('fastTrack')} · ${esc(where)}</small></div>${dice}<div class="actions">${act}</div>`;
 }
 
 function cardBody(card) {
@@ -331,7 +360,7 @@ function cardBody(card) {
 function renderCard() {
   const box = $('#card'), s = state, c = cur();
   const card = cardOf(s.card);
-  if (!card || s.phase !== 'play') { box.hidden = true; return; }
+  if (!card || s.phase !== 'play' || moving()) { box.hidden = true; return; }
   box.hidden = false;
   box.className = 'gamecard deck-' + s.card.deck;
   const tx = cardT(s.card.deck, s.card.i);
@@ -423,7 +452,7 @@ function renderSheet() {
       <div class="r"><span>${t('bankLoan')}<small>${t('interestMonth', { amt: { m: loanPay(p) } })}</small></span><b>${fmt(p.loan)}</b></div>
       ${can ? `<div class="loanrow"><input type="number" id="loanamt" step="1000" min="1000" value="1000"><button class="btn small" data-act="loan" data-pid="${p.id}">${t('takeLoan')}</button>${p.loan ? `<button class="btn small ghost" data-act="repay" data-which="loan" data-pid="${p.id}">${t('repay')}</button>` : ''}</div>` : ''}
     </details>
-    <p class="fine">${t('allowanceLeft', { amt: { m: p.allowance }, n: p.paydays })}</p>`;
+    <p class="fine">${t('savingsNote', { amt: { m: p.savings } })}<br>${t('allowanceLeft', { amt: { m: p.allowance }, n: p.paydays })}</p>`;
 }
 
 function renderLog() {

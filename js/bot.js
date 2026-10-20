@@ -99,7 +99,7 @@ export function debtToPay(p, lvl = 'hard') {
 
 export function decideFast(s, p, lvl = 'hard') {
   const sp = FAST[p.pos];
-  if (sp.type === 'dream') return p.cash >= dreamCost(s, p.pos);
+  if (sp.type === 'dream') return p.dream === p.pos ? p.cash >= dreamCost(s, p.pos) : lvl === 'easy' && p.cash >= dreamCost(s, p.pos) * 2 && rnd() < 0.3;
   if (sp.type === 'biz') return lvl === 'easy' ? p.cash >= sp.cost && rnd() < 0.7 : p.cash >= sp.cost * (lvl === 'medium' ? 1.1 : 1);
   if (sp.type === 'gamble') return lvl === 'hard' ? p.cash - sp.cost >= 150000 : lvl === 'easy' ? p.cash >= sp.cost && rnd() < 0.3 : false;
   if (sp.type === 'charity') return lvl === 'hard' && !p.fastDice && p.cash >= 300000;

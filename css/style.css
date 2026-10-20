@@ -198,3 +198,31 @@ summary::-webkit-details-marker { display: none; }
 .coach li { margin: 3px 0; }
 .coach .cl { font-size: 12px; color: #3a3352; padding: 2px 0; border-bottom: 1px dotted #cfe9d8; }
 .coach .ctip { background: #fff7d6; border-radius: 10px; padding: 8px 10px; margin-top: 8px; }
+
+/* Dice tray on the board (right side, below the Doodads deck) */
+.boardwrap { container-type: inline-size; }
+.tray { position: absolute; left: 72.2%; top: 51.5%; width: 18%; max-height: 34%; overflow: auto;
+  background: rgba(255,255,255,.93); border-radius: 1.2cqw; padding: .9cqw 1cqw; box-shadow: 0 .6cqw 1.6cqw rgba(40,10,90,.35);
+  border: .25cqw solid #fff; font-size: clamp(10px, 1.05cqw, 15px); z-index: 4; }
+.tray .turnhead { font-size: 1.05em; line-height: 1.25; }
+.tray .turnhead small { display: block; color: var(--muted); font-size: .85em; }
+.tray .dice { font-size: clamp(26px, 3.6cqw, 54px); text-align: center; margin: .2em 0; }
+.tray .actions { gap: .45em; margin-top: .3em; }
+.tray .btn { padding: .55em .7em; font-size: 1em; border-radius: .7em; }
+.tray .btn.big { font-size: 1.2em; padding: .65em .8em; }
+.tray .btn small { font-size: .75em; }
+.tray .row { flex-wrap: wrap; gap: .4em; }
+.tray .hint { font-size: .9em; padding: .45em .6em; margin: .2em 0; }
+.tray p { margin: .3em 0; }
+.tray .fine { font-size: .85em; margin: .2em 0; }
+.tray .order { gap: .3em; }
+.tray .orow { padding: .25em .5em; }
+.tray .orow .die { font-size: 2em; }
+.tray .orow .old { font-size: 1.2em; }
+.token { transition: transform .24s cubic-bezier(.3,1.4,.6,1); }
+.token.hop .piece { animation: hopUp .24s ease-out; }
+@keyframes hopUp { 40% { transform: translateY(-9px) scale(1.12); } }
+@media (max-width: 1100px) {
+  .tray { position: static; width: auto; max-height: none; margin-top: 10px; border-radius: 18px; padding: 12px 14px; font-size: 15px; }
+}
+.coach .cl small { display: block; color: #148a43; font-size: 11.5px; margin-top: 1px; }

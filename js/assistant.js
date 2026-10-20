@@ -60,6 +60,7 @@ addStrings({
   eEndGeneric: ['Your move is done. You can still take a loan or pay off debts, then end your turn.', 'Dein Zug ist erledigt. Du kannst noch Kredite aufnehmen oder Schulden ablösen, dann den Zug beenden.'],
   eFastBiz: ['A <b>business</b> on the fast track: pay {cost} once, earn +{cf} every Euro Flow Day. That gets you {pct} % of the way to the €50,000 goal.', 'Ein <b>Unternehmen</b> auf der Überholspur: einmal {cost} zahlen, jeden Euro-Flow-Tag +{cf}. Das bringt dich {pct} % näher ans 50.000-€-Ziel.'],
   eFastDream: ['Your <b>dream</b>! Buy it for {cost} and you win immediately.', 'Dein <b>Traum</b>! Kaufe ihn für {cost} und du gewinnst sofort.'],
+  eFastDreamOther: ['Nobody has chosen this dream. You may buy it for {cost} just for fun – it does not win the game.', 'Diesen Traum hat niemand gewählt. Du kannst ihn für {cost} einfach so kaufen – er gewinnt aber nicht.'],
   eFastGamble: ['A <b>gamble</b>: {text} Only bet money you can afford to lose.', 'Ein <b>Glücksspiel</b>: {text} Setze nur Geld, dessen Verlust du verkraftest.'],
   eFastCharity: ['A <b>foundation</b> costs {cost}, but lets you choose 1, 2 or 3 dice for the rest of the game – great for aiming at your dream.', 'Eine <b>Stiftung</b> kostet {cost}, aber du darfst für den Rest des Spiels 1, 2 oder 3 Würfel wählen – perfekt, um deinen Traum zu treffen.'],
   tipFastYes: ['A pro would do it.', 'Ein Profi würde zugreifen.'],
@@ -84,41 +85,111 @@ addStrings({
   tipSellNo: ['A pro would <b>keep</b> it: the price isn’t worth giving up the monthly cash flow.', 'Ein Profi würde <b>behalten</b>: Der Preis lohnt den Verzicht auf den Cashflow nicht.'],
   tipPayLoan: ['Your bank loan costs 10 % <b>per month</b>. A pro repays {amt} now.', 'Dein Bankkredit kostet 10 % <b>pro Monat</b>. Ein Profi tilgt jetzt {amt}.'],
   tipPayDebt: ['A pro would pay off <b>{debt}</b> ({amt}) – it cuts your expenses by {pay}/month.', 'Ein Profi würde <b>{debt}</b> ablösen ({amt}) – das senkt deine Ausgaben um {pay}/Monat.'],
+  jxPayday: ['Payday = salary + passive income − expenses. That is what the month really leaves over.', 'Zahltag = Gehalt + passives Einkommen − Ausgaben. So viel bleibt im Monat wirklich übrig.'],
+  jxAutoLoan: ['There wasn’t enough cash, so the bank lent the rest. That loan now costs 10 % interest every month.', 'Das Bargeld reichte nicht, die Bank hat den Rest geliehen. Dieser Kredit kostet jetzt jeden Monat 10 % Zinsen.'],
+  jxPays: ['Money went out without bringing anything back.', 'Geld ist rausgegangen, ohne etwas zurückzubringen.'],
+  jxBuys: ['An asset was bought – from now on it pays its owner every payday.', 'Ein Vermögenswert wurde gekauft – ab jetzt bringt er seinem Besitzer jeden Zahltag Geld.'],
+  jxSellsAsset: ['Sold: the bank loan is paid back from the price, taxes are due on quick profits, the rest is cash. The monthly income from it is gone.', 'Verkauft: Das Darlehen wird vom Preis abgelöst, auf schnelle Gewinne gibt es Steuern, der Rest ist Bargeld. Das monatliche Einkommen daraus fällt weg.'],
+  jxSellsStock: ['Shares sold: the profit is sale price minus purchase price; profit above €1,000 a year is taxed.', 'Aktien verkauft: Gewinn = Verkaufspreis minus Kaufpreis; über 1.000 € im Jahr wird er versteuert.'],
+  jxBaby: ['Higher monthly expenses – partly covered by Kindergeld.', 'Höhere monatliche Ausgaben – teilweise durch Kindergeld gedeckt.'],
+  jxFired: ['Without a job only passive income keeps flowing. The player misses 2 turns.', 'Ohne Job fließt nur noch passives Einkommen. Der Spieler setzt 2 Runden aus.'],
+  jxDonates: ['Giving back: for 3 turns this player can move faster with 2 dice.', 'Etwas zurückgeben: 3 Runden lang kann dieser Spieler mit 2 Würfeln schneller ziehen.'],
+  jxEnterFast: ['Passive income now pays all the bills – this player no longer needs a job and plays the fast track.', 'Das passive Einkommen bezahlt jetzt alle Rechnungen – dieser Spieler braucht keinen Job mehr und spielt auf der Überholspur.'],
+  jxReturnCash: ['Rule: the rat-race cash goes back to the bank – on the fast track you start with your buyout.', 'Regel: Das Bargeld aus dem Hamsterrad geht an die Bank zurück – auf der Überholspur startest du mit deiner Auszahlung.'],
+  jxDreamMark: ['Landing on someone else’s dream makes it more expensive for them.', 'Wer auf dem Traum eines anderen landet, macht ihn für diesen teurer.'],
+  jxBizFee: ['Owning businesses on the fast track pays twice: monthly income and €50,000 whenever someone lands there.', 'Unternehmen auf der Überholspur zahlen doppelt: monatliches Einkommen und 50.000 €, wenn jemand darauf landet.'],
+  jxCfDay: ['Euro Flow Day: the fast-track payday.', 'Euro-Flow-Tag: der Zahltag auf der Überholspur.'],
+  jxSplit: ['Same value, different number of shares.', 'Gleicher Wert, andere Anzahl Aktien.'],
+  jxCfChange: ['The economy changed – so did the monthly income of these assets.', 'Die Wirtschaft hat sich verändert – und damit das monatliche Einkommen dieser Vermögenswerte.'],
+  jxRentUp: ['Renters’ expenses went up permanently.', 'Die Ausgaben von Mietern sind dauerhaft gestiegen.'],
+  jxFinance: ['Bought on credit: a new monthly payment lowers cash flow until it is paid off.', 'Auf Pump gekauft: Eine neue Monatsrate senkt den Cashflow, bis sie abbezahlt ist.'],
+  jxGain: ['Extra cash – a good moment to invest it.', 'Extra Bargeld – ein guter Moment, es zu investieren.'],
+  jxBankrupt: ['Expenses were bigger than income and the cash ran out. The bank takes the assets.', 'Die Ausgaben waren größer als das Einkommen und das Geld ist aus. Die Bank nimmt die Vermögenswerte.'],
+  jxLoan: ['A loan gives cash now, but costs 10 % of it every month.', 'Ein Kredit bringt jetzt Geld, kostet aber jeden Monat 10 % davon.'],
+  jxRepay: ['Debt paid off: lower monthly expenses from now on.', 'Schulden abgelöst: ab jetzt niedrigere monatliche Ausgaben.'],
+  jxSkip: ['Missing a turn (fired or bankruptcy).', 'Runde aussetzen (Kündigung oder Insolvenz).'],
+  jxLoseHalf: ['A fast-track obstacle: half the cash is gone.', 'Ein Hindernis auf der Überholspur: die Hälfte des Bargelds ist weg.'],
+  jxDivorce: ['A fast-track obstacle: all cash is gone.', 'Ein Hindernis auf der Überholspur: das ganze Bargeld ist weg.'],
+  jxBuysBiz: ['More Euro Flow Day income – one step closer to +€50,000.', 'Mehr Euro-Flow-Tag-Einkommen – ein Schritt näher an +50.000 €.'],
+  jxGamble: ['A risky bet: big win or money lost.', 'Eine riskante Wette: großer Gewinn oder Geld weg.'],
+  jxOrderTie: ['Same number – those players roll again.', 'Gleiche Zahl – diese Spieler würfeln nochmal.'],
+  jxStarts: ['Highest roll starts; then play goes clockwise.', 'Die höchste Zahl beginnt; danach geht es im Uhrzeigersinn weiter.'],
+  jxBuysDream: ['An extra dream – nice, but only your own dream ★ wins the game.', 'Ein zusätzlicher Traum – schön, aber nur dein eigener Traum ★ gewinnt.'],
+  cOver: ['The game is over. Start a new game from the menu.', 'Das Spiel ist vorbei. Starte ein neues Spiel über das Menü.'],
+  oWaitOrder: ['Wait until everyone has rolled.', 'Warte, bis alle gewürfelt haben.'],
+  oWatch: ['Watch and learn from the other players’ moves.', 'Schau zu und lerne von den Zügen der anderen.'],
+  oWait: ['Wait – it’s {name}’s turn.', 'Warten – {name} ist am Zug.'],
+  oNothing: ['Nothing to do right now.', 'Gerade nichts zu tun.'],
+  gTipOrder: ['Going first is a small advantage – but good decisions matter much more than the order.', 'Anfangen ist ein kleiner Vorteil – gute Entscheidungen zählen aber viel mehr als die Reihenfolge.'],
+  gTip1: ['Small deals with positive cash flow are the safest start. Several small flats add up.', 'Kleine Deals mit positivem Cashflow sind der sicherste Start. Mehrere kleine Wohnungen summieren sich.'],
+  gTip2: ['Keep some cash ready – a great big deal can appear at any moment.', 'Halte etwas Bargeld bereit – ein toller großer Deal kann jederzeit kommen.'],
+  gTip3: ['Bank loans cost 10 % per month. Only borrow when the deal pays more than the interest, and repay fast.', 'Bankkredite kosten 10 % pro Monat. Leih dir nur Geld, wenn der Deal mehr bringt als die Zinsen, und tilge schnell.'],
+  gTip4: ['Watch the market: selling a condo at a high price can pay for a whole apartment building.', 'Beobachte den Markt: Eine teuer verkaufte Wohnung kann ein ganzes Mehrfamilienhaus finanzieren.'],
+  gTip5: ['Paying off expensive debt (credit card, instalments) lowers your expenses – and the finish line moves closer.', 'Teure Schulden ablösen (Kreditkarte, Ratenkäufe) senkt deine Ausgaben – und das Ziel rückt näher.'],
+  gTip6: ['A low salary isn’t bad here: lower expenses mean you need less passive income to escape.', 'Ein niedriges Gehalt ist hier nicht schlimm: Niedrige Ausgaben heißen, du brauchst weniger passives Einkommen zum Ausstieg.'],
+  gTipFast1: ['Buy the businesses with the highest monthly income first – they get you to +€50,000 fastest.', 'Kaufe zuerst die Unternehmen mit dem höchsten Monatseinkommen – so erreichst du +50.000 € am schnellsten.'],
+  gTipFast2: ['Keep enough cash for your dream: the moment you land on it, you can win.', 'Halte genug Bargeld für deinen Traum bereit: Sobald du darauf landest, kannst du gewinnen.'],
   tipEscape: ['Your passive income already beats your expenses – next turn you move to the fast track!', 'Dein passives Einkommen schlägt schon deine Ausgaben – nächsten Zug geht es auf die Überholspur!'],
 });
 
 const li = s => `<li>${s}</li>`;
 
+// Plain-language explanation for a log entry (shown under "What just happened")
+const JX = {
+  lPayday: 'jxPayday', lAutoLoan: 'jxAutoLoan', lPays: 'jxPays', lBuys: 'jxBuys', lSellsAsset: 'jxSellsAsset', lSellsStock: 'jxSellsStock',
+  lBaby: 'jxBaby', lFired: 'jxFired', lDonates: 'jxDonates', lEnterFast: 'jxEnterFast', lReturnCash: 'jxReturnCash',
+  lDreamMark: 'jxDreamMark', lBizFee: 'jxBizFee', lCfDay: 'jxCfDay', lSplit: 'jxSplit', lCfChange: 'jxCfChange', lRentUp: 'jxRentUp',
+  lFinance: 'jxFinance', lGain: 'jxGain', lBankrupt: 'jxBankrupt', lLoan: 'jxLoan', lRepayLoan: 'jxRepay', lRepayDebt: 'jxRepay',
+  lSkipTurn: 'jxSkip', lLoseHalf: 'jxLoseHalf', lDivorce: 'jxDivorce', lBuysBiz: 'jxBuysBiz', lGambleWin: 'jxGamble', lGambleLose: 'jxGamble',
+  lOrderTie: 'jxOrderTie', lStarts: 'jxStarts', lBuysDream: 'jxBuysDream',
+};
+const SKIP_JUST = new Set(['lOrderRoll', 'lProfIs', 'lOrderStart']);
+
 export function coachHTML(s, isMine) {
   if (!s || s.phase === 'lobby') return '';
   const cur = s.players[s.turn];
   const me = isMine(cur) ? cur : s.players.find(isMine);
-  const out = [];
-  const recent = s.log.slice(-3).map(logLine).map(x => `<div class="cl">${x}</div>`).join('');
-  out.push(`<h5>${t('cJust')}</h5>${recent}`);
   const explain = [], options = [], tips = [];
 
+  // 1) What just happened – last events, each with a plain explanation
+  let recent = s.log.filter(e => !SKIP_JUST.has(e[0]) || s.phase === 'order').slice(-4);
+  if (!recent.length) recent = s.log.slice(-3);
+  const just = recent.map(e => `<div class="cl">${logLine(e)}${JX[e[0]] ? `<small>${t(JX[e[0]])}</small>` : ''}</div>`).join('');
+
+  // 2–4) meaning, options, tip
   if (s.phase === 'order') {
     explain.push(t('cOrder'));
     if (me && s.order.eligible.includes(me.id) && s.order.rolls[me.id] == null) options.push(t('oOrderRoll'));
+    else options.push(t('oWaitOrder'));
+    tips.push(t('gTipOrder'));
   } else if (s.phase === 'over') {
-    return out.join('');
+    explain.push(t('cOver'));
   } else if (!me) {
     explain.push(t('cNotYourTurn', { name: cur.name }));
+    options.push(t('oWatch'));
   } else {
-    // goal reminder
     if (me.track === 'rat') explain.push(t('cGoalRat', { pas: { m: passive(me) }, exp: { m: totalExpenses(me) }, gap: { m: Math.max(0, totalExpenses(me) - passive(me)) } }));
     else explain.push(t('cGoalFast', { dream: fastName(me.dream), cost: { m: dreamCost(s, me.dream) }, have: { m: me.fast.income - me.fast.start } }));
-    if (me !== cur) explain.push(t('cNotYourTurn', { name: cur.name }));
     const card = cardOf(s.card);
-    // market / stock card: everybody's selling options
+    if (me !== cur) { explain.push(t('cNotYourTurn', { name: cur.name })); options.push(t('oWait', { name: cur.name })); }
     if (card && s.step === 'card') explainCard(s, me, cur, card, explain, options, tips);
     if (me === cur) explainStep(s, me, card, explain, options, tips);
+    if (me.track === 'rat') options.push(t('cAnytime'));
+    if (!tips.length) tips.push(generalTip(s, me));
   }
-  if (explain.length) out.push(`<h5>${t('cExplain')}</h5>${explain.map(x => `<p>${x}</p>`).join('')}`);
-  if (options.length) out.push(`<h5>${t('cOptions')}</h5><ul>${options.map(li).join('')}${me && me.track === 'rat' && s.phase === 'play' ? li(t('cAnytime')) : ''}</ul>`);
-  if (tips.length) out.push(`<div class="ctip"><b>${t('cTip')}</b> ${tips.join(' ')}</div>`);
-  return out.join('');
+  return `<h5>${t('cJust')}</h5>${just || `<div class="cl">–</div>`}
+    <h5>${t('cExplain')}</h5>${explain.map(x => `<p>${x}</p>`).join('')}
+    <h5>${t('cOptions')}</h5><ul>${[...new Set(options)].map(li).join('') || li(t('oNothing'))}</ul>
+    <div class="ctip"><b>${t('cTip')}</b> ${tips.join(' ') || t('gTip1')}</div>`;
+}
+
+function generalTip(s, me) {
+  if (me.track === 'fast') return t(s.seq % 2 ? 'gTipFast1' : 'gTipFast2');
+  const debt = debtToPay(me, 'hard');
+  if (debt?.which === 'loan') return t('tipPayLoan', { amt: { m: debt.amount } });
+  if (me.loan > 0) return t('gTip3');
+  const list = ['gTip1', 'gTip2', 'gTip3', 'gTip4', 'gTip5', 'gTip6'];
+  return t(list[Math.floor(s.seq / 3) % list.length]);
 }
 
 function explainCard(s, me, cur, card, explain, options, tips) {
@@ -211,7 +282,7 @@ function explainStep(s, me, card, explain, options, tips) {
     case 'fast': {
       const sp = FAST[me.pos];
       if (sp.type === 'biz') explain.push(t('eFastBiz', { cost: { m: sp.cost }, cf: { m: sp.cf }, pct: Math.round(sp.cf / 500) }));
-      if (sp.type === 'dream') explain.push(t('eFastDream', { cost: { m: dreamCost(s, me.pos) } }));
+      if (sp.type === 'dream') explain.push(t(me.dream === me.pos ? 'eFastDream' : 'eFastDreamOther', { cost: { m: dreamCost(s, me.pos) } }));
       if (sp.type === 'gamble') explain.push(t('eFastGamble', { text: fastText(me.pos) }));
       if (sp.type === 'charity') explain.push(t('eFastCharity', { cost: { m: sp.cost } }));
       tips.push(t(decideFast(s, me, 'hard') ? 'tipFastYes' : 'tipFastNo'));

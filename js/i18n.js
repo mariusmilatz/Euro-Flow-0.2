@@ -131,6 +131,7 @@ const S = {
   fastTrack: ['Fast track', 'Überholspur'],
   start: ['Start', 'Start'],
   waitFor: ['Waiting for <b style="color:{color}">{name}</b> …', 'Warte auf <b style="color:{color}">{name}</b> …'],
+  walking: ['🚶 {name} is moving …', '🚶 {name} zieht …'],
   botThinking: ['🤖 {name} is thinking …', '🤖 {name} überlegt …'],
   skipBtn: ['⏸ Miss this turn ({n})', '⏸ Runde aussetzen ({n})'],
   charityDice: ['Charity active ({n} turns): choose your dice.', 'Spende aktiv ({n} Runden): wähle die Würfel.'],
@@ -248,6 +249,13 @@ const S = {
   whyFired: ['expenses minus unemployment benefit', 'Ausgaben minus Arbeitslosengeld'],
   whyStock: ['{qty} × {sym} at {price}', '{qty} × {sym} zu {price}'],
   whyEquity: ['down payment for {cardName}', 'Eigenkapital für {cardName}'],
+  lReturnCash: ['🏦 {name} returns the rat-race cash ({amt}) to the bank.', '🏦 {name} gibt das Bargeld aus dem Hamsterrad ({amt}) an die Bank zurück.'],
+  lOwnBiz: ['{name} lands on their own business: {fast}.', '{name} landet auf dem eigenen Unternehmen: {fast}.'],
+  lBizFee: ['💼 {name} lands on {owner}’s business ({fast}) and pays {owner} {amt}.', '💼 {name} landet auf dem Unternehmen von {owner} ({fast}) und zahlt {owner} {amt}.'],
+  lBuysDream: ['✨ {name} buys an extra dream: {fast} for {amt}.', '✨ {name} kauft einen weiteren Traum: {fast} für {amt}.'],
+  savingsNote: ['Savings of {amt} were paid out once at the start.', 'Ersparnisse von {amt} wurden einmalig beim Start ausgezahlt.'],
+  dreamOfferOther: ['{icon} <b>{fast}</b> is nobody’s dream yet – buy it as an extra dream for {cost}? (Doesn’t win the game – only your own dream ★ does.)', '{icon} <b>{fast}</b> ist noch niemandes Traum – als zusätzlichen Traum für {cost} kaufen? (Gewinnt nicht – nur dein eigener Traum ★.)'],
+  buyExtraDream: ['Buy extra dream', 'Zusätzlichen Traum kaufen'],
   lCfDay: ['💶 Euro Flow Day: {name} receives {amt}', '💶 Euro-Flow-Tag: {name} erhält {amt}'],
   lOwnedBy: ['{fast} already belongs to {owner}.', '{fast} gehört schon {owner}.'],
   lDreamMark: ['😈 {name} lands on someone else’s dream: “{fast}” now costs its owner {amt} more!', '😈 {name} landet auf einem fremden Traum: „{fast}“ wird für dessen Besitzer um {amt} teurer!'],
@@ -326,7 +334,7 @@ export const RULES = {
   en: `
 <h2>How to play Euro Flow</h2>
 <p><b>Goal:</b> escape the <b>hamster wheel</b> (inner circle) by making your <b>passive income</b> (rent, businesses, interest) bigger than your <b>monthly expenses</b>. Then you move onto the <b>fast track</b> (outer ring).</p>
-<p><b>Start:</b> everyone gets a random job. Then everyone rolls one die – the highest number goes first (ties roll again).</p>
+<p><b>Start:</b> everyone gets a random job and receives their monthly cash flow plus savings (savings are paid only once). Then everyone rolls one die – the highest number goes first (ties roll again). Play goes clockwise.</p>
 <h3>Hamster wheel</h3>
 <ul>
 <li><b>Opportunity (green):</b> draw a small deal (up to €5,000) or a big deal (€6,000+). Buying is optional.</li>
@@ -340,9 +348,9 @@ export const RULES = {
 </ul>
 <h3>Fast track</h3>
 <ul>
-<li>Your starting cash and Euro Flow Day income = <b>100 × your passive income</b>.</li>
+<li>You give your rat-race cash back to the bank and start with your buyout: <b>100 × your passive income</b>. That is also your Euro Flow Day income.</li><li>Roll 2 dice. Landing on or passing <b>Euro Flow Day</b> pays your income.</li><li>Buy a green business and your token goes on it. If another player lands on <b>your</b> business, they pay you <b>€50,000</b>.</li><li>You may buy other free dreams too (“don’t limit yourself to one dream”) – but only <b>your own</b> dream wins.</li>
 <li>You win by <b>buying your dream ★</b> or adding <b>€50,000</b> monthly income (buy green businesses).</li>
-<li>Landing on someone else’s dream makes it more expensive for them. Lawsuit & tax audit cost half your cash, divorce all of it.</li>
+<li>Landing on someone else’s dream makes it more expensive for them. Lawsuit & tax audit cost half your cash, divorce all of it.</li><li><b>Charity</b> (foundation): pay €100,000 and choose 1, 2 or 3 dice for the rest of the game.</li>
 </ul>
 <h3>🇩🇪 The German system in the game</h3>
 <ul>
@@ -365,7 +373,7 @@ export const RULES = {
   de: `
 <h2>So spielst du Euro Flow</h2>
 <p><b>Ziel:</b> Raus aus dem <b>Hamsterrad</b> (innerer Kreis) – indem dein <b>passives Einkommen</b> (Mieten, Unternehmen, Zinsen) größer ist als deine <b>monatlichen Ausgaben</b>. Danach geht’s auf die <b>Überholspur</b> (äußerer Ring).</p>
-<p><b>Start:</b> Jeder bekommt einen zufälligen Beruf. Dann würfeln alle einmal – die höchste Zahl beginnt (bei Gleichstand wird neu gewürfelt).</p>
+<p><b>Start:</b> Jeder bekommt einen zufälligen Beruf und erhält seinen monatlichen Cashflow plus Ersparnisse (Ersparnisse gibt es nur einmal). Dann würfeln alle einmal – die höchste Zahl beginnt (bei Gleichstand wird neu gewürfelt). Gespielt wird im Uhrzeigersinn.</p>
 <h3>Hamsterrad</h3>
 <ul>
 <li><b>Chance (grün):</b> Ziehe einen kleinen Deal (bis 5.000 €) oder großen Deal (ab 6.000 €). Kaufen ist freiwillig.</li>
@@ -379,9 +387,9 @@ export const RULES = {
 </ul>
 <h3>Überholspur</h3>
 <ul>
-<li>Startkapital und Euro-Flow-Tag-Einkommen = <b>100 × dein passives Einkommen</b>.</li>
+<li>Du gibst dein Bargeld aus dem Hamsterrad an die Bank zurück und startest mit deiner Auszahlung: <b>100 × dein passives Einkommen</b>. Das ist auch dein Euro-Flow-Tag-Einkommen.</li><li>Du würfelst mit 2 Würfeln. Beim Landen auf oder Überqueren des <b>Euro-Flow-Tags</b> bekommst du dein Einkommen.</li><li>Kaufst du ein grünes Unternehmen, kommt deine Marke drauf. Landet ein anderer Spieler auf <b>deinem</b> Unternehmen, zahlt er dir <b>50.000 €</b>.</li><li>Du darfst auch andere freie Träume kaufen („beschränke dich nicht auf einen Traum“) – gewinnen tut aber nur <b>dein eigener</b> Traum.</li>
 <li>Du gewinnst, wenn du <b>deinen Traum ★ kaufst</b> oder dein Einkommen um <b>50.000 €</b> steigerst (grüne Unternehmen kaufen).</li>
-<li>Landest du auf dem Traum eines anderen, wird er für ihn teurer. Klage & Betriebsprüfung kosten die Hälfte deines Bargelds, Scheidung alles.</li>
+<li>Landest du auf dem Traum eines anderen, wird er für ihn teurer. Klage & Betriebsprüfung kosten die Hälfte deines Bargelds, Scheidung alles.</li><li><b>Spende</b> (Stiftung): 100.000 € zahlen und für den Rest des Spiels 1, 2 oder 3 Würfel wählen.</li>
 </ul>
 <h3>🇩🇪 Das deutsche System im Spiel</h3>
 <ul>
