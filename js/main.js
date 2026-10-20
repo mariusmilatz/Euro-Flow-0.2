@@ -196,18 +196,31 @@ function botStep() {
 
 // Another player's card: once they decided (bought / passed / chose), show the result for
 // 2 seconds and close the popup by itself — no click needed. Stays open while I can still sell into it.
+// How long another player's popup stays open: adapts to how much there is to read
+// (≈ 0.2 s per word + 2 s, between 3 and 14 s). A click on the board closes it sooner.
+const cardShownAt = {}, cardWords = {};
+const READ = { base: 2000, perWord: 200, min: 3000, max: 14000 };
+const readMs = id => Math.min(READ.max, Math.max(READ.min, READ.base + (cardWords[id] || 0) * READ.perWord));
+let closeTimer = null;
+function closeCardAt(id, at) {
+  ackCard = id;
+  showResultUntil[id] = at;   // the computer waits until then before it moves on
+  if (closeTimer) clearTimeout(closeTimer);
+  closeTimer = setTimeout(() => { closeTimer = null; if (state.card && state.card.id === id) { closedCard = id; render(); } scheduleBots(); }, Math.max(0, at - Date.now()));
+}
+// Another player's card closes by itself once it has been read (decision cards: after the choice,
+// at least 2 s with the result). Stays open while I can still sell into it.
 function autoCloseDecided() {
   const s = state;
   if (!s.card || s.phase !== 'play' || moving() || closedCard === s.card.id || ackCard === s.card.id) return;
-  const drawer = s.players.find(p => p.id === s.card.by);
-  if (!drawer || mine(drawer)) return;
-  const decided = s.card.done || (s.card.passed || []).includes(drawer.id);
+  const drawer = s.players.find(p => p.id === s.card.by), card = cardOf(s.card);
+  if (!drawer || mine(drawer) || !card) return;
+  const decided = !BUYABLE.includes(card.type) || s.card.done || (s.card.passed || []).includes(drawer.id);
   if (!decided || humansDeciding().some(mine)) return;
-  const id = s.card.id;
-  ackCard = id;
-  showResultUntil[id] = Date.now() + RESULT_MS;
-  setTimeout(() => { if (state.card && state.card.id === id) { closedCard = id; render(); } scheduleBots(); }, RESULT_MS);
-  setTimeout(() => render(), 0);   // show the "closing in a moment" hint
+  const id = s.card.id, now = Date.now();
+  const at = Math.max((cardShownAt[id] ?? now) + readMs(id), BUYABLE.includes(card.type) ? now + RESULT_MS : 0);
+  closeCardAt(id, at);
+  setTimeout(() => render(), 0);   // show the "closes by itself" hint
 }
 
 // ---------- screens ----------
@@ -514,7 +527,12 @@ function renderCard() {
     ${s.card.done ? `<p class="done">${doneTxt}</p>` : declined ? `<p class="declined">${t('declinedBy', { name: esc(drawer.name) })}</p>` : ''}
     ${results ? `<div class="cresult"><b>${t('cardResult')}</b>${results}</div>` : ''}
     <div class="cardacts">${actions}</div>
-    ${othersCard ? `<p class="clickhint">${ackCard === s.card.id ? t('closingSoon') : t('clickToContinue')}</p>` : ''}`;
+    ${othersCard ? `<p class="clickhint">${ackCard === s.card.id ? ((showResultUntil[s.card.id] || 0) - Date.now() > RESULT_MS + 300 ? t('closesAuto') : t('closingSoon')) : t('clickToContinue')}</p>` : ''}`;
+  if (othersCard) {
+    cardShownAt[s.card.id] ??= Date.now();
+    const txt = [...box.querySelectorAll('h3, .ct, table, .done, .declined, .cresult')].map(e => e.textContent).join(' ');
+    cardWords[s.card.id] = Math.max(cardWords[s.card.id] || 0, txt.split(/\s+/).filter(w => /[\p{L}\d]/u.test(w)).length);
+  }
   for (const inp of box.querySelectorAll('[data-sellqty]')) {
     const p = s.players.find(x => x.id === inp.dataset.pid), a = p.assets.find(x => x.id === inp.dataset.sellqty);
     const upd = () => {
@@ -694,17 +712,15 @@ document.addEventListener('click', e => {
   // click anywhere on the board (not on a panel) closes another player's card popup and lets the game go on
   if (state && state.card && e.target.closest('#board') && !e.target.closest('button')) {
     const drawer = state.players.find(p => p.id === state.card.by);
-    if (!mine(drawer) && closedCard !== state.card.id && ackCard !== state.card.id) {
-      const id = state.card.id;
-      ackCard = id;
+    const id = state.card.id;
+    if (!mine(drawer) && closedCard !== id && !(ackCard === id && (showResultUntil[id] || 0) <= Date.now() + RESULT_MS)) {
       for (const p of humansDeciding().filter(mine)) dispatch({ type: 'passCard', pid: p.id });
       // keep the popup (with the other player's choice) on screen for 2 seconds, then close and go on
-      showResultUntil[id] = Date.now() + RESULT_MS;
+      closeCardAt(id, Math.min(showResultUntil[id] || Infinity, Date.now() + RESULT_MS));
       if (botTimer) { clearTimeout(botTimer); botTimer = null; }
       if (mode !== 'client' && botDecisionPending()) botStep();   // the computer decides right now
       else render();
       scheduleBots();
-      setTimeout(() => { if (state.card && state.card.id === id) { closedCard = id; render(); } }, RESULT_MS);
       return;
     }
   }
