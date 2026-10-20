@@ -193,6 +193,22 @@ function botStep() {
   botDo(a);
 }
 
+// Another player's card: once they decided (bought / passed / chose), show the result for
+// 2 seconds and close the popup by itself — no click needed. Stays open while I can still sell into it.
+function autoCloseDecided() {
+  const s = state;
+  if (!s.card || s.phase !== 'play' || moving() || closedCard === s.card.id || ackCard === s.card.id) return;
+  const drawer = s.players.find(p => p.id === s.card.by);
+  if (!drawer || mine(drawer)) return;
+  const decided = s.card.done || (s.card.passed || []).includes(drawer.id);
+  if (!decided || humansDeciding().some(mine)) return;
+  const id = s.card.id;
+  ackCard = id;
+  showResultUntil[id] = Date.now() + RESULT_MS;
+  setTimeout(() => { if (state.card && state.card.id === id) { closedCard = id; render(); } scheduleBots(); }, RESULT_MS);
+  setTimeout(() => render(), 0);   // show the "closing in a moment" hint
+}
+
 // ---------- screens ----------
 function showScreen(id) { for (const el of document.querySelectorAll('.screen')) el.hidden = el.id !== id; }
 
@@ -276,6 +292,7 @@ function render() {
   renderCoach();
   renderTurn();
   renderCard();
+  autoCloseDecided();
   renderPlayers();
   renderSheet();
   renderLog();
