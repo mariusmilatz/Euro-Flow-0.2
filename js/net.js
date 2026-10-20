@@ -25,7 +25,7 @@ export function hostRoom(code, { onMessage, onPeers, onError }) {
       conn.on('close', () => { conns.delete(conn.peer); onPeers?.(conns.size); });
     });
     peer.on('error', e => {
-      if (e.type === 'unavailable-id') reject(new Error('Dieser Raum-Code ist schon vergeben.'));
+      if (e.type === 'unavailable-id') reject(new Error('taken'));
       else if (!peer.open) reject(e); else onError?.(e);
     });
     peer.on('disconnected', () => { try { peer.reconnect(); } catch { /* ignore */ } });
@@ -38,7 +38,7 @@ export function joinRoom(code, { onMessage, onClose }) {
     let done = false;
     peer.on('open', id => {
       const conn = peer.connect(PREFIX + code.toUpperCase(), { reliable: true });
-      const timer = setTimeout(() => { if (!done) reject(new Error('Raum nicht gefunden. Ist der Host noch online?')); }, 12000);
+      const timer = setTimeout(() => { if (!done) reject(new Error('notfound')); }, 12000);
       conn.on('open', () => {
         done = true; clearTimeout(timer);
         resolve({ id, send: msg => conn.open && conn.send(msg), close: () => peer.destroy() });
@@ -47,7 +47,7 @@ export function joinRoom(code, { onMessage, onClose }) {
       conn.on('close', () => onClose?.());
     });
     peer.on('error', e => {
-      if (!done) reject(e.type === 'peer-unavailable' ? new Error('Raum nicht gefunden. Code prüfen!') : e);
+      if (!done) reject(e.type === 'peer-unavailable' ? new Error('notfound') : e);
     });
   });
 }

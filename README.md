@@ -11,7 +11,10 @@ größer ist als deine Ausgaben – dann geht es vom Hamsterrad auf die Überhol
 Läuft im Browser auf Mac, PC, Tablet und Handy – nichts installieren.
 
 - **Online:** „Spiel erstellen“ → Link kopieren → an Freunde schicken. Sie öffnen den Link, geben ihren Namen ein, fertig.
-- **Lokal:** „Lokal spielen“ → alle Spieler an einem Bildschirm.
+- **Allein / lokal:** „Hier spielen (gegen Computer)“ → Computer-Gegner in drei Stufen: *Leicht*, *Mittel*, *Schwer* (spielt wie ein echter Mensch). Menschen am selben Gerät können auch mitspielen.
+- **Sprache:** Englisch (Standard) oder Deutsch – oben rechts umschalten, jederzeit.
+- **🐹 Coach:** optionaler Assistent, der jede Karte erklärt, sagt was gerade passiert ist und welche Möglichkeiten du hast (inkl. Profi-Tipp). Standardmäßig aus, in der Lobby oder jederzeit im Spiel an-/ausschaltbar.
+- **Startreihenfolge:** Vor dem Spiel würfeln alle – die höchste Zahl beginnt, bei Gleichstand wird neu gewürfelt.
 - Der Spielstand wird beim Host automatisch gespeichert („Letztes Spiel fortsetzen“).
 
 ## 🇩🇪 Was ist deutsch daran?
@@ -41,7 +44,11 @@ Spielstand, alle anderen verbinden sich direkt – kein eigener Server nötig. G
 index.html      Startseite, Lobby, Spieloberfläche
 css/style.css   Design
 js/data.js      Berufe, Karten, Spielfelder (hier Zahlen anpassen!)
+js/data_en.js   Englische Kartentexte (gleiche Reihenfolge wie data.js)
+js/i18n.js      Alle Texte Englisch/Deutsch + Spielregeln
 js/engine.js    Spielregeln
+js/bot.js       Computer-Gegner (leicht / mittel / schwer)
+js/assistant.js Coach
 js/board.js     Spielbrett (SVG)
 js/net.js       Online-Verbindung
 js/main.js      Oberfläche
