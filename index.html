@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Euro Flow – Raus aus dem Hamsterrad</title>
+  <meta name="description" content="Online-Brettspiel über Geld, Vermögen und das deutsche Steuersystem. Raus aus dem Hamsterrad, rauf auf die Überholspur!">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐹</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+</head>
+<body>
+  <!-- START -->
+  <section id="start" class="screen hero">
+    <div class="herobox">
+      <div class="logo"><span class="ham">🐹</span><h1>EURO<span>€</span>FLOW</h1><p class="tag">Raus aus dem Hamsterrad – rauf auf die Überholspur!</p></div>
+      <label class="field">Dein Name<input id="name" maxlength="16" placeholder="z. B. Marius"></label>
+      <p id="join-hint" class="hint" hidden>Du wurdest eingeladen! Gib deinen Namen ein und klicke auf <b>Beitreten</b>.</p>
+      <div class="choices">
+        <div class="choice">
+          <h3>🌐 Online spielen</h3>
+          <button class="btn big" id="btn-host">Spiel erstellen</button>
+          <div class="joinrow"><input id="joincode" maxlength="5" placeholder="CODE"><button class="btn" id="btn-join">Beitreten</button></div>
+          <p class="fine">Erstelle ein Spiel und schick deinen Freunden den Link – Mac, PC, Tablet oder Handy.</p>
+        </div>
+        <div class="choice">
+          <h3>📱 An einem Gerät</h3>
+          <button class="btn big ghostlight" id="btn-local">Lokal spielen</button>
+          <p class="fine">Alle sitzen am selben Bildschirm und geben die Maus weiter.</p>
+          <button class="btn ghostlight" id="btn-resume" hidden>↺ Letztes Spiel fortsetzen</button>
+        </div>
+      </div>
+      <button class="link" data-rules>📖 Spielregeln & was ist „deutsch“ daran?</button>
+    </div>
+  </section>
+
+  <section id="connecting" class="screen hero" hidden><div class="herobox"><div class="spinner"></div><p>Verbinde …</p></div></section>
+
+  <!-- LOBBY -->
+  <section id="lobby" class="screen hero" hidden>
+    <div class="herobox wide">
+      <div class="logo small"><span class="ham">🐹</span><h1>EURO<span>€</span>FLOW</h1></div>
+      <div id="lobby-invite" hidden class="invite">
+        <div>Raum-Code: <b id="room-code"></b></div>
+        <div class="joinrow"><input id="invite-link" readonly><button class="btn" id="copy-link">Link kopieren</button></div>
+        <p class="fine">Schick diesen Link an deine Mitspieler. Sie öffnen ihn, geben ihren Namen ein – fertig.</p>
+      </div>
+      <h3>Spieler</h3>
+      <div id="lobby-players"></div>
+      <div class="joinrow"><input id="lobby-name" maxlength="16" placeholder="Weiterer Spieler an diesem Gerät"><button class="btn ghostlight" id="lobby-add">+ Hinzufügen</button></div>
+      <p class="fine">Jeder wählt einen Traum ★. Die Berufe werden beim Start zufällig verteilt.</p>
+      <button class="btn big gold" id="lobby-start">Spiel starten ➜</button>
+      <p id="lobby-wait" class="hint" hidden>Warte, bis der Host das Spiel startet …</p>
+      <button class="link" data-rules>📖 Spielregeln</button>
+    </div>
+  </section>
+
+  <!-- SPIEL -->
+  <section id="game" class="screen" hidden>
+    <header class="topbar">
+      <div class="brand">🐹 EURO<span>€</span>FLOW</div>
+      <div id="netstatus"></div>
+      <div class="tb"><button class="link" data-rules>📖 Regeln</button><button class="link" id="btn-leave">⏏ Menü</button></div>
+    </header>
+    <main class="layout">
+      <div class="boardwrap">
+        <div id="board"></div>
+        <div id="card" class="gamecard" hidden></div>
+      </div>
+      <aside class="side">
+        <div id="turn" class="panel"></div>
+        <div id="players"></div>
+        <div id="sheet" class="panel sheet"></div>
+        <div class="panel"><h4>Spielverlauf</h4><div id="log"></div></div>
+      </aside>
+    </main>
+    <div id="winner" class="overlay" hidden></div>
+  </section>
+
+  <!-- REGELN -->
+  <div id="rules" class="overlay" hidden>
+    <div class="rulesbox">
+      <button class="x" id="rules-close">✕</button>
+      <h2>So spielst du Euro Flow</h2>
+      <p><b>Ziel:</b> Raus aus dem <b>Hamsterrad</b> (innerer Kreis) – indem dein <b>passives Einkommen</b> (Mieten, Unternehmen, Zinsen) größer ist als deine <b>monatlichen Ausgaben</b>. Danach geht’s auf die <b>Überholspur</b> (äußerer Ring).</p>
+      <h3>Hamsterrad</h3>
+      <ul>
+        <li><b>Chance (grün):</b> Ziehe einen kleinen Deal (bis 5.000 €) oder großen Deal (ab 6.000 €). Kaufen ist freiwillig.</li>
+        <li><b>Markt (pink):</b> Käufer für Immobilien, Gold & Firmen – oder Ereignisse. <i>Alle</i> Spieler, die das Passende besitzen, dürfen verkaufen.</li>
+        <li><b>Schnickschnack (blau):</b> Konsumausgaben – müssen bezahlt werden. Fehlt Geld, gibt die Bank automatisch einen Kredit.</li>
+        <li><b>Zahltag (gelb):</b> Beim Landen oder Überqueren bekommst du deinen monatlichen Cashflow.</li>
+        <li><b>Spende:</b> 10 % deines Einkommens spenden → 3 Runden mit 1 oder 2 Würfeln.</li>
+        <li><b>Baby:</b> Mehr Ausgaben – aber auch Kindergeld (max. 3 Kinder).</li>
+        <li><b>Gekündigt:</b> Du zahlst deine Ausgaben minus Arbeitslosengeld und setzt 2 Runden aus.</li>
+        <li><b>Bankkredit:</b> Jederzeit in 1.000-€-Schritten, 10 % Zinsen pro Monat (Spielregel). Schulden kann man ablösen, um Ausgaben zu senken.</li>
+      </ul>
+      <h3>Überholspur</h3>
+      <ul>
+        <li>Startkapital und Euro-Flow-Tag-Einkommen = <b>100 × dein passives Einkommen</b>.</li>
+        <li>Du gewinnst, wenn du <b>deinen Traum ★ kaufst</b> oder dein Einkommen um <b>50.000 €</b> steigerst (grüne Unternehmen kaufen).</li>
+        <li>Landest du auf dem Traum eines anderen, wird er für ihn doppelt so teuer. Klage & Betriebsprüfung kosten die Hälfte deines Bargelds, Scheidung alles.</li>
+      </ul>
+      <h3>🇩🇪 Das deutsche System im Spiel</h3>
+      <ul>
+        <li><b>Brutto & Netto:</b> Vom Gehalt gehen Lohnsteuer/Soli und Sozialversicherung ab. Beamte zahlen keine Sozialversicherung, aber private Krankenversicherung.</li>
+        <li><b>Miete statt Hauskredit:</b> Die meisten Deutschen wohnen zur Miete. Miete kann man nicht „abbezahlen“ – Indexmiete kann sogar steigen.</li>
+        <li><b>Kaufnebenkosten 7 %:</b> Grunderwerbsteuer, Notar und Grundbuch kommen beim Immobilienkauf obendrauf.</li>
+        <li><b>Spekulationsfrist:</b> Verkaufst du eine Immobilie innerhalb von 10 Jahren (120 Zahltage) mit Gewinn, zahlst du Steuern (vereinfacht 30 %). Bei Gold gilt 1 Jahr.</li>
+        <li><b>Abgeltungsteuer:</b> Aktiengewinne kosten 26,375 % (25 % + Soli). Pro Jahr sind 1.000 € steuerfrei (Sparerpauschbetrag).</li>
+        <li><b>Kindergeld:</b> 255 € pro Kind und Monat.</li>
+        <li><b>Arbeitslosengeld I:</b> 60 % vom Netto, wenn du gekündigt wirst.</li>
+        <li><b>BAföG, Dispo, 0 %-Finanzierung:</b> typisch deutsche Schulden auf deinem Finanzbericht.</li>
+        <li><b>Privatinsolvenz:</b> Kannst du am Zahltag nicht zahlen, übernimmt die Bank deine Vermögenswerte zum halben Einsatz, Restschulden werden erlassen, du setzt 3 Runden aus.</li>
+      </ul>
+      <p class="fine">Euro Flow ist ein eigenständiges Lernspiel, inspiriert von klassischen Finanz-Brettspielen. Alle Firmen und Zahlen sind fiktiv bzw. vereinfacht und keine Steuer- oder Anlageberatung.</p>
+    </div>
+  </div>
+
+  <div id="toasts"></div>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
