@@ -87,6 +87,7 @@ addStrings({
   tipPayLoan: ['Your bank loan costs 10 % <b>per month</b>. A pro repays {amt} now.', 'Dein Bankkredit kostet 10 % <b>pro Monat</b>. Ein Profi tilgt jetzt {amt}.'],
   tipPayDebt: ['A pro would pay off <b>{debt}</b> ({amt}) – it cuts your expenses by {pay}/month.', 'Ein Profi würde <b>{debt}</b> ablösen ({amt}) – das senkt deine Ausgaben um {pay}/Monat.'],
   jxPayday: ['Payday = salary + passive income − expenses. That is what the month really leaves over.', 'Zahltag = Gehalt + passives Einkommen − Ausgaben. So viel bleibt im Monat wirklich übrig.'],
+  jxQuickSell: ['A quick sale: the agent found a buyer at once, but below market value, with agent fee, an early-repayment penalty on the mortgage and – inside the speculation period – tax on the profit. Selling on a market card or after the speculation period is usually cheaper.', 'Ein Schnellverkauf: Der Makler hat sofort einen Käufer gefunden, aber unter Marktwert, mit Maklerprovision, Vorfälligkeitsentschädigung aufs Darlehen und – innerhalb der Spekulationsfrist – Steuer auf den Gewinn. Über eine Marktkarte oder nach der Spekulationsfrist ist es meist günstiger.'],
   jxAutoLoan: ['There wasn’t enough cash, so the bank lent the rest. That loan now costs 10 % interest every month.', 'Das Bargeld reichte nicht, die Bank hat den Rest geliehen. Dieser Kredit kostet jetzt jeden Monat 10 % Zinsen.'],
   jxPays: ['Money went out without bringing anything back.', 'Geld ist rausgegangen, ohne etwas zurückzubringen.'],
   jxBuys: ['An asset was bought – from now on it pays its owner every payday.', 'Ein Vermögenswert wurde gekauft – ab jetzt bringt er seinem Besitzer jeden Zahltag Geld.'],
@@ -167,7 +168,7 @@ const p_unemployed = p => p.alg > 0 || p.sperr > 0;
 
 // Plain-language explanation for a log entry (shown under "What just happened")
 const JX = {
-  lPayday: 'jxPayday', lAutoLoan: 'jxAutoLoan', lPays: 'jxPays', lBuys: 'jxBuys', lSellsAsset: 'jxSellsAsset', lSellsStock: 'jxSellsStock',
+  lPayday: 'jxPayday', lAutoLoan: 'jxAutoLoan', lQuickSell: 'jxQuickSell', lPays: 'jxPays', lBuys: 'jxBuys', lSellsAsset: 'jxSellsAsset', lSellsStock: 'jxSellsStock',
   lBaby: 'jxBaby', lFired: 'jxFired', lDonates: 'jxDonates', lEnterFast: 'jxEnterFast', lReturnCash: 'jxReturnCash',
   lDreamMark: 'jxDreamMark', lBizFee: 'jxBizFee', lCfDay: 'jxCfDay', lSplit: 'jxSplit', lCfChange: 'jxCfChange', lRentUp: 'jxRentUp',
   lFinance: 'jxFinance', lGain: 'jxGain', lBankrupt: 'jxBankrupt', lLoan: 'jxLoan', lRepayLoan: 'jxRepay', lRepayDebt: 'jxRepay',

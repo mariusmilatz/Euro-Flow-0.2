@@ -158,6 +158,23 @@ export function etfSaleTax(p, a, s) {
   if (!R(s).specTax || gain <= 0) return 0;
   return Math.round(Math.max(0, gain * (1 - ETF_TEILFREI) - p.allowance) * ABGELTUNG);
 }
+// Quick sale of a property on your own turn (no market card needed): an estate agent finds a buyer fast,
+// but you pay for the hurry — below-market price, agent fee, early-repayment penalty on the mortgage
+// (Vorfälligkeitsentschädigung, § 490 BGB) and, inside the speculation period, tax on the gain (§ 23 EStG).
+export const QUICK = { premium: 1.15, growth: 0.04, discount: 0.9, makler: 0.0357, vfe: 0.02 };
+export function quickSale(p, a, s) {
+  const held = Math.max(0, p.year - (a.boughtYear || 1));
+  const market = r100(a.price * QUICK.premium * (1 + QUICK.growth) ** held * rateFactor(s));
+  const price = r100(market * QUICK.discount);
+  const makler = r100(price * QUICK.makler);
+  const vfe = a.mortgage && held < SPEKU_YEARS_IMMO ? r100(a.mortgage * QUICK.vfe) : 0;
+  const gain = price - makler - a.price - (a.nk || 0);
+  const taxed = R(s).specTax && gain > 0 && held < SPEKU_YEARS_IMMO;
+  const tax = taxed ? Math.round(gain * mrateOf(p, s)) : 0;
+  const net = price - makler - (a.mortgage || 0) - vfe - tax;
+  const why = !R(s).specTax ? '' : held >= SPEKU_YEARS_IMMO ? 'qsTaxFree' : gain <= 0 ? 'qsNoGain' : 'taxSpekuImmo';
+  return { held, market, price, makler, vfe, gain, tax, net, why, freeAt: (a.boughtYear || 1) + SPEKU_YEARS_IMMO, cfLost: a.cf || 0 };
+}
 export const dreamCost = (s, idx) => FAST[idx].cost * (1 + (s.dreamMarks[idx] || 0));
 
 // ---------- Net worth (Nettovermögen) ----------
@@ -679,6 +696,19 @@ export function apply(state, a, from) {
         const profit = net - (asset.down || asset.price || 0);
         note(p, profit, profit >= 0 ? 'nSell' : 'nSellLoss', { asset: A(asset).asset, amt: SM(profit) });
       }
+      break;
+    }
+    case 'quickSell': {
+      const p = current(a.pid);
+      if (p.track !== 'rat' || !['roll', 'card', 'end'].includes(s.step)) fail('errNotNow');
+      const asset = p.assets.find(x => x.id === a.assetId) || fail('errAssetNF');
+      if (!IMMO.includes(asset.kind)) fail('errCantSellNow');
+      const q = quickSale(p, asset, s);
+      p.assets = p.assets.filter(x => x !== asset);
+      if (q.net >= 0) p.cash += q.net; else charge(s, p, -q.net, K('whyQuickSale'));
+      log(s, 'lQuickSell', { name: p.name, asset: A(asset).asset, price: M(q.price), costs: M(q.makler + q.vfe), mort: M(asset.mortgage || 0), tax: M(q.tax), net: SM(q.net) });
+      const profit = q.net - (asset.down || asset.price || 0);
+      note(p, profit, profit >= 0 ? 'nSell' : 'nSellLoss', { asset: A(asset).asset, amt: SM(profit) });
       break;
     }
     case 'passCard': { // "keep it" / "don't buy" – recorded so the popup can show it

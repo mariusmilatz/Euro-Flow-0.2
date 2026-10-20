@@ -304,3 +304,13 @@ summary::-webkit-details-marker { display: none; }
 .winbox .lost { font-size: 80px; text-align: center; }
 .loanhint { color: #b4235a; font-weight: 700; }
 #loancalc { margin: 0 6px; white-space: nowrap; }
+.loancheck { background: #fff4f6; border: 2px solid #f3c2cf; border-radius: 12px; padding: 8px 10px; margin: 6px 0; text-align: left; font-size: 13px; }
+.loancheck table, .qsell table { width: 100%; border-collapse: collapse; margin: 4px 0; }
+.loancheck td, .qsell td { padding: 2px 0; }
+.loancheck td:last-child, .qsell td:last-child { text-align: right; white-space: nowrap; }
+.loancheck tr.sum td, .qsell tr.sum td { border-top: 1px solid #e3d6e6; padding-top: 4px; }
+.loancheck .fine { margin: 4px 0 0; }
+.qsell { margin-top: 6px; font-size: 12px; }
+.qsell summary { cursor: pointer; font-weight: 800; color: #6b3fd4; }
+.qsell[open] { background: #f7f3ff; border-radius: 10px; padding: 6px 8px; }
+.qsell td.muted { color: #6d6386; }

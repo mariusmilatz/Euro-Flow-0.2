@@ -3,7 +3,7 @@ import {
   apply, newGame, passive, totalIncome, cashflow, cardOf, R, BUILDINGS, IMMO,
   sellable, salePrice, saleTax, nebenkosten, nkRate, darlehen, dreamCost, loanPay, buyCost,
   incomeLines, deductionLines, livingLines, saveLines, livingCosts, healthCost, escapeTarget, assetCf, netWorth,
-  payInfo, afaPotential, etfOf, bausparOf, etfSaleTax, working,
+  payInfo, afaPotential, etfOf, bausparOf, etfSaleTax, working, quickSale,
 } from './engine.js';
 import { boardSVG, drawDynamic } from './board.js';
 import { hostRoom, joinRoom, newCode } from './net.js';
@@ -29,6 +29,7 @@ let lastTurnSeen = null;
 let justOpen = false;   // coach: "what just happened" expanded?
 let logOpen = false;
 let logFilter = 'all';  // 'all' or a player id
+let qsOpen = null;      // property whose "sell now" breakdown is unfolded
 let closedCard = null;  // another player's card the viewer clicked away
 const outShown = new Set(); // my players whose 'you're out' notice was shown
 
@@ -435,6 +436,21 @@ const needLoanHint = (p, cost, cfDelta = 0) => {
   return l ? t('needLoan', { amt: { m: l }, pay: { m: loanPay({ loan: l }) }, cf: { sm: cashflow(p, state) + cfDelta - loanPay({ loan: l }) } }) : '';
 };
 
+// Deal needs more cash than you have → show what the loan costs each month vs. what the deal brings
+function loanCheck(p, cost, brings = 0) {
+  const l = loanFor(p, cost);
+  if (!l) return '';
+  const pay = loanPay({ loan: l }), netM = brings - pay, after = cashflow(p, state) + netM;
+  const r = (k, v, cls = '') => `<tr class="${cls}"><td>${k}</td><td>${v}</td></tr>`;
+  return `<div class="loancheck"><b>${t('lcTitle')}</b><table>
+    ${r(t('lcNeed'), fmt(l))}
+    ${r(t('lcInterest'), `<b class="neg">${sfmt(-pay)}</b>`)}
+    ${r(t('lcBrings'), `<b class="${brings < 0 ? 'neg' : 'pos'}">${sfmt(brings)}</b>`)}
+    ${r(`<b>${t('lcNet')}</b>`, `<b class="${netM < 0 ? 'neg' : 'pos'}">${sfmt(netM)}</b>`, 'sum')}
+    ${r(t('lcPayday'), `<b class="${after < 0 ? 'neg' : ''}">${sfmt(after)}</b>`)}
+    </table><p class="fine">${t(netM < 0 ? 'lcBad' : 'lcGood')} ${t('lcRepay')}</p></div>`;
+}
+
 function renderCard() {
   const box = $('#card'), s = state, c = cur();
   const card = cardOf(s.card);
@@ -456,7 +472,7 @@ function renderCard() {
       const need = buyCost(card);
       const loan = loanFor(c, need);
       actions += `<button class="btn green" data-act="buy">${t('buyFor', { amt: { m: need } })}${loan ? ` <small>${t('inclLoan', { amt: { m: loan }, pay: { m: loanPay({ loan }) } })}</small>` : ''}</button>`;
-      if (loan) actions += `<p class="fine loanhint">${needLoanHint(c, need, card.cf || 0)}</p>`;
+      if (loan) actions = loanCheck(c, need, card.cf || 0) + actions;
       const b = bausparOf(c);
       if (b && b.ready && BUILDINGS.includes(card.kind)) actions += `<button class="btn green dark" data-act="buy" data-bauspar="1">${t('buyWithBauspar', { amt: { m: b.balance } })}</button>`;
     }
@@ -504,7 +520,7 @@ function renderCard() {
     inp.oninput = upd; upd();
   }
   const q = $('#qty');
-  if (q && card.type === 'stock') { const upd = () => { const cost = (+q.value || 0) * card.price; $('#qtycost').innerHTML = t('costLine', { cost: { m: cost }, cash: { m: c.cash } }) + (loanFor(c, cost) ? `<br><span class="loanhint">${needLoanHint(c, cost)}</span>` : ''); }; q.oninput = upd; upd(); }
+  if (q && card.type === 'stock') { const upd = () => { const cost = (+q.value || 0) * card.price; $('#qtycost').innerHTML = t('costLine', { cost: { m: cost }, cash: { m: c.cash } }) + loanCheck(c, cost); }; q.oninput = upd; upd(); }
 }
 
 function renderPlayers() {
@@ -519,6 +535,30 @@ function renderPlayers() {
       <span class="pl">${p.out ? t('out') : p.track === 'fast' ? '🚀 ' + t('fastTrack') : t('passiveOf', { pas: { m: pas }, exp: { m: exp } })}</span>
     </button>`;
   }).join('');
+}
+
+// "Sell now" for a property: full breakdown of what a quick sale costs, so you can judge if it is worth it
+function quickSellBox(p, a) {
+  const s = state, q = quickSale(p, a, s);
+  const myTurn = cur().id === p.id && ['roll', 'card', 'end'].includes(s.step) && !moving();
+  const r = (k, v, cls = '') => `<tr class="${cls}"><td>${k}</td><td>${v}</td></tr>`;
+  const neg = v => v ? `−${fmt(v)}` : fmt(0);
+  const taxRow = q.tax ? r(t('qsTax', { pct: Math.round(q.tax / q.gain * 100), gain: { m: q.gain } }), neg(q.tax), 'neg')
+    : q.why ? `<tr><td colspan="2" class="muted">${t(q.why)}</td></tr>` : '';
+  return `<details class="qsell" data-qs="${a.id}" ${qsOpen === a.id ? 'open' : ''}><summary>${t('qsBtn')}</summary>
+    <p class="fine">${t('qsIntro')}</p><table>
+    ${r(t('qsMarket', { n: q.held }), fmt(q.market))}
+    ${r(t('qsPrice'), fmt(q.price))}
+    ${r(t('qsMakler'), neg(q.makler), 'neg')}
+    ${a.mortgage ? r(t('qsMort'), neg(a.mortgage), 'neg') : ''}
+    ${q.vfe ? r(t('qsVfe'), neg(q.vfe), 'neg') : ''}
+    ${taxRow}
+    ${r(`<b>${t(q.net >= 0 ? 'qsNet' : 'qsNetNeg')}</b>`, `<b class="${q.net < 0 ? 'neg' : 'pos'}">${fmt(Math.abs(q.net))}</b>`, 'sum')}
+    ${q.cfLost ? r(t('qsCf'), `<b class="${q.cfLost > 0 ? 'neg' : 'pos'}">${sfmt(-q.cfLost)}</b>`) : ''}
+    </table>
+    ${q.held < SPEKU_YEARS_IMMO && (q.tax || q.vfe) ? `<p class="fine">${t('qsWait', { n: q.freeAt })}</p>` : ''}
+    ${myTurn ? `<button class="btn small" data-act="quickSell" data-pid="${p.id}" data-asset="${a.id}">${t('qsConfirm', { amt: { sm: q.net } })}</button>` : `<p class="fine">${t('qsOnlyTurn')}</p>`}
+  </details>`;
 }
 
 function renderSheet() {
@@ -569,6 +609,7 @@ function renderSheet() {
     }
     let ctl = '';
     if (a.kind === 'etf' && can) ctl = `<div class="etfctl"><input type="number" step="50" min="0" value="${a.monthly}" id="etfamt"> <button class="btn tiny" data-act="etfSet" data-pid="${p.id}">${t('etfSetBtn')}</button><button class="btn tiny ghost" data-act="etfSell" data-pid="${p.id}" title="${esc(t('etfSellHint', { tax: { m: etfSaleTax(p, a, s) } }))}">${t('etfSellBtn', { amt: { m: Math.round(a.value) - etfSaleTax(p, a, s) } })}</button></div>`;
+    if (IMMO.includes(a.kind) && mine(p) && p.track === 'rat' && s.phase === 'play') ctl += quickSellBox(p, a);
     return `<div class="r"><span>${esc(assetName(a))}<small>${d}</small>${ctl}</span><b class="${assetCf(a) < 0 ? 'neg' : ''}">${assetCf(a) ? sfmt(assetCf(a)) : '–'}</b></div>`;
   }).join('') || `<p class="muted">${t('noAssets')}</p>`;
   const home = p.homeValue ? `<div class="r"><span>🏡 ${t('ownHome')}<small>${t('ownHomeHint')}</small></span><b>${fmt(p.homeValue)}</b></div>` : '';
@@ -643,6 +684,7 @@ function renderWinner() {
 }
 
 // ---------- events ----------
+document.addEventListener('toggle', e => { const d = e.target; if (d.matches && d.matches('details.qsell')) { if (d.open) qsOpen = d.dataset.qs; else if (qsOpen === d.dataset.qs) qsOpen = null; } }, true);
 document.addEventListener('click', e => {
   // click anywhere on the board (not on a panel) closes another player's card popup and lets the game go on
   if (state && state.card && e.target.closest('#board') && !e.target.closest('button')) {
@@ -687,6 +729,7 @@ document.addEventListener('click', e => {
     case 'advisor': return dispatch({ type: 'advisor', pid: d.pid, on: !!d.on });
     case 'etfSet': return dispatch({ type: 'etfSet', pid: d.pid, amount: +$('#etfamt').value });
     case 'etfSell': return dispatch({ type: 'etfSell', pid: d.pid });
+    case 'quickSell': qsOpen = null; return dispatch({ type: 'quickSell', pid: d.pid, assetId: d.asset });
     case 'passCard': return dispatch({ type: 'passCard', pid: d.pid });
     case 'sell': {
       const q = document.querySelector(`[data-sellqty="${d.asset}"]`);
