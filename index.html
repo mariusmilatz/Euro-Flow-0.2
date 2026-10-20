@@ -75,8 +75,11 @@
   <section id="game" class="screen" hidden>
     <header class="topbar">
       <div class="brand">🐹 EURO<span>€</span>FLOW</div>
-      <div id="netstatus"></div>
+      <div id="players" class="hplayers"></div>
       <div class="tb">
+        <span id="netstatus"></span>
+        <div class="logwrap"><button class="pill" id="log-toggle"></button>
+          <div id="logpanel" class="logpanel" hidden><div id="log"></div></div></div>
         <button class="pill" id="coach-toggle"></button>
         <span class="langs inline"><button data-lang="en">EN</button><button data-lang="de">DE</button></span>
         <button class="link" data-rules data-i18n="rules"></button>
@@ -88,12 +91,10 @@
         <div id="board"></div>
         <div id="card" class="gamecard" hidden></div>
         <div id="turn" class="tray"></div>
+        <div id="coach" class="coach coachbox" hidden></div>
       </div>
       <aside class="side">
-        <div id="coach" class="panel coach" hidden></div>
-        <div id="players"></div>
         <div id="sheet" class="panel sheet"></div>
-        <div class="panel"><h4 data-i18n="log"></h4><div id="log"></div></div>
       </aside>
     </main>
     <div id="winner" class="overlay" hidden></div>

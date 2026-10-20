@@ -145,7 +145,7 @@ const JX = {
 };
 const SKIP_JUST = new Set(['lOrderRoll', 'lProfIs', 'lOrderStart']);
 
-export function coachHTML(s, isMine) {
+export function coachHTML(s, isMine, justOpen = false) {
   if (!s || s.phase === 'lobby') return '';
   const cur = s.players[s.turn];
   const me = isMine(cur) ? cur : s.players.find(isMine);
@@ -177,7 +177,7 @@ export function coachHTML(s, isMine) {
     if (me.track === 'rat') options.push(t('cAnytime'));
     if (!tips.length) tips.push(generalTip(s, me));
   }
-  return `<h5>${t('cJust')}</h5>${just || `<div class="cl">–</div>`}
+  return `<details class="cjust" ${justOpen ? 'open' : ''}><summary>${t('cJust')}</summary><div class="cjustlist">${just || `<div class="cl">–</div>`}</div></details>
     <h5>${t('cExplain')}</h5>${explain.map(x => `<p>${x}</p>`).join('')}
     <h5>${t('cOptions')}</h5><ul>${[...new Set(options)].map(li).join('') || li(t('oNothing'))}</ul>
     <div class="ctip"><b>${t('cTip')}</b> ${tips.join(' ') || t('gTip1')}</div>`;

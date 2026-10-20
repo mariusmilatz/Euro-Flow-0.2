@@ -22,6 +22,10 @@ let net = null;
 let viewPid = null;
 let lastRollSeq = null;
 let lastLogLen = 0;
+let lastTurnSeen = null;
+let justOpen = false;   // coach: "what just happened" expanded?
+let logOpen = false;
+let closedCard = null;  // another player's card the viewer clicked away
 
 // ---------- walking animation: pieces hop space by space like on a real board ----------
 const HOP_MS = 260;
@@ -108,7 +112,9 @@ function onClientMessage(msg) {
 }
 
 // ---------- computer players (run on host / local device only) ----------
-let botTimer = null, botCardSeen = null, cardSince = 0;
+let botTimer = null, botCardSeen = null, cardSince = 0, ackCard = null;
+const ACK_WAIT = 40000; // max time a bot's card stays open waiting for a click
+const humanHere = () => state.players.some(p => !p.bot && !p.out && (mode === 'local' || p.owner === me));
 function scheduleBots() {
   if (mode === 'client' || !state || botTimer || moving()) return;
   if (state.phase !== 'order' && state.phase !== 'play') return;
@@ -150,12 +156,17 @@ function botStep() {
   }
   const c = cur();
   if (!c.bot) return;
-  const a = botAction(state, c);
+  let a = botAction(state, c);
   if (!a) return;
-  // give humans time to sell into a market card before the bot ends its turn
-  if (a.type === 'endTurn' && state.step === 'card' && humansDeciding().length && Date.now() - cardSince < 45000) {
-    botTimer = setTimeout(() => { botTimer = null; botStep(); }, 1000);
-    return;
+  if (state.step === 'card' && a.type === 'endTurn') {
+    const card = cardOf(state.card);
+    // the bot declines a buyable card → record it so the popup can show "didn't buy"
+    if ((card.type === 'asset' || card.type === 'stock') && !state.card.done && !(state.card.passed || []).includes(c.id)) a = { type: 'passCard', pid: c.id };
+    // keep the popup open: wait for humans to sell, and for a click on the board (or a timeout)
+    else if ((humansDeciding().length || (humanHere() && ackCard !== state.card.id)) && Date.now() - cardSince < ACK_WAIT) {
+      botTimer = setTimeout(() => { botTimer = null; botStep(); }, 500);
+      return;
+    }
   }
   botDo(a);
 }
@@ -233,9 +244,11 @@ function render() {
   if (!state) return;
   if (state.phase === 'lobby') { showScreen('lobby'); renderLobby(); return; }
   showScreen('game');
-  if (!viewPid || !state.players.some(p => p.id === viewPid)) viewPid = (state.players.find(mine) || state.players[0]).id;
   const c = cur();
-  if (state.phase === 'play' && mine(c) && mode === 'local') viewPid = c.id;
+  if (!viewPid || !state.players.some(p => p.id === viewPid)) viewPid = (state.players.find(mine) || state.players[0]).id;
+  // pass-and-play: follow whichever human is on turn
+  if (state.phase === 'play' && mine(c) && lastTurnSeen !== state.turn) viewPid = c.id;
+  lastTurnSeen = state.turn;
   syncAnim();
   drawDynamic($('#board-svg'), state, anim.shown);
   renderCoach();
@@ -245,7 +258,7 @@ function render() {
   renderSheet();
   renderLog();
   renderWinner();
-  $('#netstatus').textContent = mode === 'local' ? t('netLocal') : mode === 'host' ? t('netHost', { code: net.code, n: net.count() }) : t('netClient', { code: net.code });
+  $('#netstatus').textContent = mode === 'local' ? '' : mode === 'host' ? t('netHost', { code: net.code, n: net.count() }) : t('netClient', { code: net.code });
   scheduleBots();
 }
 
@@ -276,7 +289,11 @@ function renderCoach() {
   const el = $('#coach');
   el.hidden = !coachOn;
   if (!coachOn) return;
-  el.innerHTML = `<div class="coachhead"><span>${t('coachTitle')}</span><button class="x" id="coach-close" title="${t('coachOff')}">✕</button></div>` + coachHTML(state, mine);
+  const top = el.scrollTop;
+  el.innerHTML = `<div class="coachhead"><span>${t('coachTitle')}</span><button class="x" id="coach-close" title="${t('coachOff')}">✕</button></div>` + coachHTML(state, mine, justOpen);
+  el.scrollTop = top;
+  const d = el.querySelector('details.cjust');
+  if (d) d.addEventListener('toggle', () => { justOpen = d.open; });
 }
 
 function renderTurn() {
@@ -360,7 +377,7 @@ function cardBody(card) {
 function renderCard() {
   const box = $('#card'), s = state, c = cur();
   const card = cardOf(s.card);
-  if (!card || s.phase !== 'play' || moving()) { box.hidden = true; return; }
+  if (!card || s.phase !== 'play' || moving() || closedCard === s.card.id) { box.hidden = true; return; }
   box.hidden = false;
   box.className = 'gamecard deck-' + s.card.deck;
   const tx = cardT(s.card.deck, s.card.i);
@@ -379,8 +396,11 @@ function renderCard() {
     const own = p.assets.filter(x => sellable(card, x));
     for (const a of own) {
       if (card.type === 'stock') {
-        actions += `<div class="sellrow"><span style="color:${p.color}">●</span> ${esc(p.name)}: ${a.shares} × ${a.sym} (${t('avg')} ${fmt(a.cost / a.shares)})
-          <input type="number" min="1" max="${a.shares}" value="${a.shares}" data-sellqty="${a.id}"> <button class="btn small" data-act="sell" data-pid="${p.id}" data-asset="${a.id}">${t('sell')}</button></div>`;
+        const avg = a.cost / a.shares, pct = Math.round((card.price - avg) / avg * 100);
+        actions += `<div class="sellrow"><span style="color:${p.color}">●</span> ${esc(p.name)}: ${a.shares} × ${a.sym} · ${t('avg')} ${fmt(avg)} → ${fmt(card.price)}
+          <b class="${pct < 0 ? 'neg' : 'pos'}">${pct >= 0 ? '+' : ''}${pct} %</b>
+          <span class="qtywrap"><input type="number" min="1" max="${a.shares}" value="${a.shares}" data-sellqty="${a.id}" data-pid="${p.id}"> <button class="btn small" data-act="sell" data-pid="${p.id}" data-asset="${a.id}">${t('sell')}</button></span>
+          <span class="selltotal" data-selltotal="${a.id}"></span></div>`;
       } else {
         const price = salePrice(card, a), { tax } = saleTax(p, card, a);
         const net = price - (a.mortgage || 0) - tax;
@@ -391,17 +411,32 @@ function renderCard() {
     if (own.length && p.id !== c.id && !(s.card.passed || []).includes(p.id)) actions += `<button class="btn small ghost" data-act="passCard" data-pid="${p.id}">${t('keepIt', { name: esc(p.name) })}</button>`;
   }
   if (mine(c) && s.step === 'card') actions += `<button class="btn ghost" data-act="endTurn">${t('endTurn')}</button>`;
+  // what happened with this card (bought / passed / paid / sold …)
+  const results = s.log.slice(s.card.logAt ?? s.log.length).map(l => `<div>${esc(logLine(l))}</div>`).join('');
+  const declined = (s.card.passed || []).includes(s.card.by) && !s.card.done;
+  const othersCard = !mine(drawer);
   box.innerHTML = `<div class="ch"><span>${t('deck_' + s.card.deck)}</span><small>${t('drawnBy')} <b style="color:${drawer?.color}">${esc(drawer && pname(drawer))}</b></small></div>
     <h3>${esc(tx.title)}</h3><p class="ct">${esc(tx.text)}</p>${cardBody(card)}
-    ${s.card.done ? `<p class="done">${t('bought')}</p>` : ''}
-    <div class="cardacts">${actions}</div>`;
+    ${s.card.done ? `<p class="done">${t('boughtBy', { name: esc(drawer.name) })}</p>` : declined ? `<p class="declined">${t('declinedBy', { name: esc(drawer.name) })}</p>` : ''}
+    ${results ? `<div class="cresult"><b>${t('cardResult')}</b>${results}</div>` : ''}
+    <div class="cardacts">${actions}</div>
+    ${othersCard ? `<p class="clickhint">${t('clickToContinue')}</p>` : ''}`;
+  for (const inp of box.querySelectorAll('[data-sellqty]')) {
+    const p = s.players.find(x => x.id === inp.dataset.pid), a = p.assets.find(x => x.id === inp.dataset.sellqty);
+    const upd = () => {
+      const qty = Math.max(0, Math.min(a.shares, Math.floor(+inp.value || 0)));
+      const gross = qty * card.price, profit = gross - qty * (a.cost / a.shares), { tax } = saleTax(p, card, a, qty);
+      box.querySelector(`[data-selltotal="${a.id}"]`).innerHTML = t('sellTotal', { amt: { m: gross }, profit: { sm: profit }, tax: { m: tax }, net: { m: gross - tax } });
+    };
+    inp.oninput = upd; upd();
+  }
   const q = $('#qty');
   if (q) { const upd = () => { $('#qtycost').textContent = t('costLine', { cost: { m: (+q.value || 0) * card.price }, cash: { m: c.cash } }); }; q.oninput = upd; upd(); }
 }
 
 function renderPlayers() {
   $('#players').innerHTML = state.players.map(p => {
-    if (!p.debts) return '';
+    if (!p.debts || mine(p)) return '';
     const exp = totalExpenses(p), pas = passive(p);
     const pct = p.track === 'fast' ? Math.min(100, (p.fast.income - p.fast.start) / 500) : Math.min(100, pas / exp * 100);
     return `<button class="pchip ${p.id === viewPid ? 'on' : ''} ${p.out ? 'out' : ''}" data-view="${p.id}" style="--c:${p.color}">
@@ -418,7 +453,9 @@ function renderSheet() {
   const el = $('#sheet');
   const can = mine(p) && state.phase === 'play';
   const row = (k, v, cls = '') => `<div class="r ${cls}"><span>${k}</span><b>${v}</b></div>`;
-  const head = `<div class="sheethead" style="--c:${p.color}"><h2>${esc(pname(p))}${p.bot ? ` <small>(${t('lvlShort_' + p.bot)})</small>` : ''}</h2><span>${esc(profName(p.profKey))}`;
+  const myP = state.players.find(mine);
+  const back = !mine(p) && myP ? `<button class="btn tiny ghost backme" data-view="${p.id}">${t('backToMe')}</button>` : '';
+  const head = `${back}<div class="sheethead" style="--c:${p.color}"><h2>${esc(pname(p))}${p.bot ? ` <small>(${t('lvlShort_' + p.bot)})</small>` : ''}</h2><span>${esc(profName(p.profKey))}`;
   if (p.track === 'fast') {
     const owned = Object.entries(state.fastOwners).filter(([, id]) => id === p.id).map(([i]) => +i);
     el.innerHTML = `${head} · 🚀 ${t('fastTrack')}</span></div>
@@ -457,6 +494,7 @@ function renderSheet() {
 
 function renderLog() {
   const el = $('#log');
+  $('#log-toggle').textContent = t('logBtn');
   el.innerHTML = state.log.slice(-60).map(l => `<div>${esc(logLine(l))}</div>`).join('');
   if (state.log.length !== lastLogLen) { el.scrollTop = el.scrollHeight; lastLogLen = state.log.length; }
 }
@@ -473,12 +511,26 @@ function renderWinner() {
 
 // ---------- events ----------
 document.addEventListener('click', e => {
+  // click anywhere on the board (not on a panel) closes another player's card popup and lets the game go on
+  if (state && state.card && e.target.closest('#board') && !e.target.closest('button')) {
+    const drawer = state.players.find(p => p.id === state.card.by);
+    if (!mine(drawer) && closedCard !== state.card.id) {
+      closedCard = ackCard = state.card.id;
+      for (const p of humansDeciding().filter(mine)) dispatch({ type: 'passCard', pid: p.id });
+      render();
+      if (botTimer) { clearTimeout(botTimer); botTimer = null; }
+      scheduleBots();
+      return;
+    }
+  }
+  if (e.target.id === 'log-toggle') { logOpen = !logOpen; $('#logpanel').hidden = !logOpen; if (logOpen) { const l = $('#log'); l.scrollTop = l.scrollHeight; } return; }
+  if (logOpen && !e.target.closest('.logwrap')) { logOpen = false; $('#logpanel').hidden = true; }
   const b = e.target.closest('button, [data-view]');
   if (!b) return;
   const d = b.dataset;
   if (b.id === 'coach-close') return setCoach(false);
   if (d.lang) { setLang(d.lang); applyStatic(); render(); return; }
-  if (d.view) { viewPid = d.view; render(); return; }
+  if (d.view) { viewPid = viewPid === d.view ? (state.players.find(mine) || state.players[0]).id : d.view; render(); return; }
   if (d.remove) return dispatch({ type: 'removePlayer', pid: d.remove });
   if (d.color) return dispatch({ type: 'setColor', pid: d.pid, color: d.color });
   if (!d.act) return;

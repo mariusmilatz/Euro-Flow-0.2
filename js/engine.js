@@ -177,7 +177,7 @@ function nextTurn(s) {
 }
 
 function showCard(s, p, deck, i) {
-  s.card = { deck, i, by: p.id, done: false, id: s.seq };
+  s.card = { deck, i, by: p.id, done: false, id: s.seq, logAt: s.log.length };
   immediate(s, p, DECKS[deck][i], deck, i);
   s.step = 'card';
 }
