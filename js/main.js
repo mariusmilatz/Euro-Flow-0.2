@@ -28,10 +28,13 @@ let lastLogLen = 0;
 let lastTurnSeen = null;
 let justOpen = false;   // coach: "what just happened" expanded?
 let logOpen = false;
+let logFilter = 'all';  // 'all' or a player id
 let closedCard = null;  // another player's card the viewer clicked away
+const outShown = new Set(); // my players whose 'you're out' notice was shown
 
 // ---------- walking animation: pieces hop space by space like on a real board ----------
-const HOP_MS = 260;
+const HOP_MS = 210;
+let justLanded = false; // a piece just arrived → computer players react right away
 const anim = { shown: {}, timer: null };
 const moving = () => anim.timer != null;
 function syncAnim() {
@@ -52,7 +55,7 @@ function hop() {
     if (sh.pos !== p.pos) still = true;
   }
   drawDynamic($('#board-svg'), state, anim.shown);
-  if (!still) { clearInterval(anim.timer); anim.timer = null; setTimeout(render, 150); }
+  if (!still) { clearInterval(anim.timer); anim.timer = null; justLanded = true; setTimeout(render, 120); }
 }
 
 // ---------- helpers ----------
@@ -116,13 +119,23 @@ function onClientMessage(msg) {
 
 // ---------- computer players (run on host / local device only) ----------
 let botTimer = null, botCardSeen = null, cardSince = 0, ackCard = null;
+const showResultUntil = {};   // card id → time until the bot's result stays visible after a click
+const BUYABLE = ['asset', 'stock', 'etfplan', 'bauspar', 'choice'];
+// a computer player still has to decide on its own card (buy / pass / choose)
+function botDecisionPending() {
+  const c = cur(), card = cardOf(state.card);
+  return !!(card && c.bot && state.step === 'card' && state.card.by === c.id && BUYABLE.includes(card.type) && !state.card.done && !(state.card.passed || []).includes(c.id));
+}
 const ACK_WAIT = 40000; // max time a bot's card stays open waiting for a click
 const humanHere = () => state.players.some(p => !p.bot && !p.out && (mode === 'local' || p.owner === me));
 function scheduleBots() {
   if (mode === 'client' || !state || botTimer || moving()) return;
   if (state.phase !== 'order' && state.phase !== 'play') return;
   const c = cur();
-  const delay = state.phase === 'order' ? 650 : state.step === 'card' ? 2200 : 1100;
+  // quick pace: computer players "think" while pieces move and act right after landing;
+  // a card stays visible a moment before the computer decides so you can read it
+  let delay = state.phase === 'order' ? 380 : state.step === 'card' ? (botDecisionPending() ? 1100 : 300) : state.step === 'roll' ? 350 : 300;
+  if (justLanded) { delay = Math.min(delay, state.step === 'card' && botDecisionPending() ? 900 : 150); justLanded = false; }
   if (state.phase === 'play' && !c.bot && !(state.card && state.card.id !== botCardSeen)) return;
   botTimer = setTimeout(() => { botTimer = null; botStep(); }, delay);
 }
@@ -167,7 +180,12 @@ function botStep() {
     if (['asset', 'stock', 'etfplan', 'bauspar'].includes(card.type) && !state.card.done && !(state.card.passed || []).includes(c.id)) a = { type: 'passCard', pid: c.id };
     // keep the popup open: wait for humans to sell, and for a click on the board (or a timeout)
     else if ((humansDeciding().length || (humanHere() && ackCard !== state.card.id)) && Date.now() - cardSince < ACK_WAIT) {
-      botTimer = setTimeout(() => { botTimer = null; botStep(); }, 500);
+      botTimer = setTimeout(() => { botTimer = null; botStep(); }, 400);
+      return;
+    }
+    // the popup was clicked away before the bot decided: show its result for a moment, then go on
+    else if ((showResultUntil[state.card.id] || 0) > Date.now()) {
+      botTimer = setTimeout(() => { botTimer = null; botStep(); }, showResultUntil[state.card.id] - Date.now());
       return;
     }
   }
@@ -261,6 +279,7 @@ function render() {
   renderSheet();
   renderLog();
   renderWinner();
+  renderOut();
   $('#netstatus').textContent = mode === 'local' ? '' : mode === 'host' ? t('netHost', { code: net.code, n: net.count() }) : t('netClient', { code: net.code });
   scheduleBots();
 }
@@ -556,11 +575,34 @@ function renderSheet() {
     <p class="fine">${t('savingsNote', { amt: { m: p.savings } })}<br>${t('allowanceLeft', { amt: { m: p.allowance }, n: p.paydays })}</p>`;
 }
 
+// does a log entry concern this player?
+const logAbout = ([, p], name) => !!p && (p.name === name || p.owner === name || (typeof p.names === 'string' && p.names.split(', ').includes(name)));
 function renderLog() {
   const el = $('#log');
   $('#log-toggle').textContent = t('logBtn');
-  el.innerHTML = state.log.slice(-60).map(l => `<div>${esc(logLine(l))}</div>`).join('');
+  $('#logfilter-label').textContent = t('logShow');
+  if (logFilter !== 'all' && !state.players.some(p => p.id === logFilter)) logFilter = 'all';
+  const opts = [['all', t('logAll')], ...[...state.players].sort((a, b) => (mine(b) ? 1 : 0) - (mine(a) ? 1 : 0)).map(p => [p.id, (mine(p) ? t('logMe') + ' – ' : '') + pname(p)])];
+  const sel = $('#logfilter');
+  const html = opts.map(([v, l]) => `<option value="${v}" ${v === logFilter ? 'selected' : ''}>${esc(l)}</option>`).join('');
+  if (sel.dataset.html !== html) { sel.innerHTML = html; sel.dataset.html = html; }
+  const who = state.players.find(p => p.id === logFilter);
+  const list = who ? state.log.filter(l => logAbout(l, who.name)) : state.log;
+  el.innerHTML = list.slice(-80).map(l => `<div>${esc(logLine(l))}</div>`).join('') || `<p class="muted">–</p>`;
   if (state.log.length !== lastLogLen) { el.scrollTop = el.scrollHeight; lastLogLen = state.log.length; }
+}
+
+// one of my players went bankrupt while other people play on → leave or keep watching
+function renderOut() {
+  if (state.phase !== 'play') return;
+  const p = state.players.find(q => mine(q) && q.out && !outShown.has(q.id));
+  if (!p) return;
+  outShown.add(p.id);
+  const w = $('#winner');
+  w.hidden = false;
+  w.innerHTML = `<div class="winbox"><div class="trophy">💸</div><h2>${t('outTitle')}</h2><p>${esc(t('outText', { name: p.name }))}</p>
+    ${mode === 'host' ? `<p class="hint">${t('outHostWarn')}</p>` : ''}
+    <button class="btn big" id="outleave">${t('outLeave')}</button><button class="btn ghost" id="closewin">${t('outWatch')}</button></div>`;
 }
 
 function renderWinner() {
@@ -577,17 +619,27 @@ document.addEventListener('click', e => {
   // click anywhere on the board (not on a panel) closes another player's card popup and lets the game go on
   if (state && state.card && e.target.closest('#board') && !e.target.closest('button')) {
     const drawer = state.players.find(p => p.id === state.card.by);
-    if (!mine(drawer) && closedCard !== state.card.id) {
-      closedCard = ackCard = state.card.id;
+    if (!mine(drawer) && closedCard !== state.card.id && ackCard !== state.card.id) {
+      const id = state.card.id;
+      ackCard = id;
       for (const p of humansDeciding().filter(mine)) dispatch({ type: 'passCard', pid: p.id });
-      render();
-      if (botTimer) { clearTimeout(botTimer); botTimer = null; }
-      scheduleBots();
+      if (mode !== 'client' && botDecisionPending()) {
+        // let the computer decide now and keep its result on screen briefly before the popup closes
+        showResultUntil[id] = Date.now() + 1600;
+        if (botTimer) { clearTimeout(botTimer); botTimer = null; }
+        botStep();
+      } else {
+        closedCard = id;
+        render();
+        if (botTimer) { clearTimeout(botTimer); botTimer = null; }
+        scheduleBots();
+      }
       return;
     }
   }
   if (e.target.id === 'log-toggle') { logOpen = !logOpen; $('#logpanel').hidden = !logOpen; if (logOpen) { const l = $('#log'); l.scrollTop = l.scrollHeight; } return; }
   if (logOpen && !e.target.closest('.logwrap')) { logOpen = false; $('#logpanel').hidden = true; }
+  if (e.target.closest('.logpanel')) return;
   const b = e.target.closest('button, [data-view]');
   if (!b) return;
   const d = b.dataset;
@@ -624,6 +676,7 @@ document.addEventListener('change', e => {
   const d = e.target.dataset;
   if (d.dream) dispatch({ type: 'setDream', pid: d.dream, dream: +e.target.value });
   if (d.botlvl) dispatch({ type: 'setBot', pid: d.botlvl, bot: e.target.value });
+  if (e.target.id === 'logfilter') { logFilter = e.target.value; lastLogLen = -1; renderLog(); return; }
   if (d.city) dispatch({ type: 'setCity', pid: d.city, city: e.target.value });
   if (d.church) dispatch({ type: 'setChurch', pid: d.church, on: e.target.checked });
 });
@@ -662,7 +715,8 @@ function setup() {
   $('#rules-close').onclick = () => { $('#rules').hidden = true; };
   $('#rules').onclick = e => { if (e.target.id === 'rules') $('#rules').hidden = true; };
   $('#winner').addEventListener('click', e => {
-    if (e.target.id === 'closewin') { $('#winner').hidden = true; $('#winner').dataset.closed = String(state.seq); }
+    if (e.target.id === 'closewin') { $('#winner').hidden = true; if (state.phase === 'over') $('#winner').dataset.closed = String(state.seq); }
+    if (e.target.id === 'outleave') { if (mode !== 'client') store.del(SAVE); location.href = location.pathname; }
     if (e.target.id === 'again') { store.del(SAVE); location.href = location.pathname; }
   });
   $('#btn-leave').onclick = () => { if (confirm(t('leaveConfirm'))) location.href = location.pathname; };

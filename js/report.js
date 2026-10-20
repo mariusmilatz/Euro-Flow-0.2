@@ -38,7 +38,7 @@ export function reportHTML(s, mine, pname) {
   const bots = s.players.filter(p => p.bot);
   const compare = me && bots.length ? `<p class="fine">${t('repCompare', { rank: myRank, n: s.players.length, nw: { m: netWorth(me, s) }, best: esc(pname(ranked.find(p => p.bot))), bnw: { m: netWorth(ranked.find(p => p.bot), s) } })}</p>` : '';
   return `<div class="winbox report"><div class="trophy">🏆</div>
-    <h2>${w ? esc(t('wins', { name: pname(w) })) : t('gameOver')}</h2><p>${s.winner ? esc(t(s.winner.reason.k, s.winner.reason.p)) : ''}</p>
+    ${w ? '' : '<style>.report .trophy{display:none}</style><div class="lost">💸</div>'}<h2>${w ? esc(t('wins', { name: pname(w) })) : t('gameOver')}</h2><p>${s.winner ? esc(t(s.winner.reason.k, s.winner.reason.p)) : s.endReason ? esc(t(s.endReason.k, s.endReason.p)) : ''}</p>
     <h4>${t('repChart')}</h4>${chart(s)}
     <div class="legend">${s.players.map(p => `<span><i style="background:${p.color}"></i>${esc(p.name)}</span>`).join('')}</div>
     <h4>${t('repRanking')}</h4><table class="rank">${rows}</table>${compare}

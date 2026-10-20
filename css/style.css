@@ -298,3 +298,7 @@ summary::-webkit-details-marker { display: none; }
 .movegrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
 .moves { background: #faf7ff; border-radius: 12px; padding: 8px 10px; font-size: 12.5px; } .moves.me { outline: 2px solid var(--gold); }
 .winbtns { display: flex; gap: 8px; justify-content: center; margin-top: 12px; flex-wrap: wrap; }
+
+.logbar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; font-weight: 800; }
+.logbar select { flex: 1; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); font-weight: 700; color: var(--ink); }
+.winbox .lost { font-size: 80px; text-align: center; }

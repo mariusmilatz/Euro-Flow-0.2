@@ -302,7 +302,14 @@ function bankrupt(s, p) {
     log(s, 'lHalfDebt');
   }
   if (p.cash < 0) { log(s, 'lRestForgiven', { amt: M(-p.cash) }); p.cash = 0; }
-  if (cashflow(p, s) < 0) { p.out = true; log(s, 'lOut', { name: p.name }); }
+  if (cashflow(p, s) < 0) {
+    p.out = true; log(s, 'lOut', { name: p.name });
+    // no human left in the game (e.g. single player) → the game ends
+    if (s.players.some(q => !q.bot) && !s.players.some(q => !q.bot && !q.out)) {
+      s.phase = 'over'; s.winner = null; s.endReason = K('endBroke', { name: p.name });
+      log(s, 'lGameOverBroke', { name: p.name });
+    }
+  }
   else { p.skip = 3; log(s, 'lSkip3', { name: p.name }); }
 }
 
@@ -335,7 +342,7 @@ function nextTurn(s) {
     const j = (s.turn + i) % n;
     if (!s.players[j].out) { s.turn = j; return startTurn(s); }
   }
-  s.phase = 'over'; s.winner = null; log(s, 'lAllOut');
+  s.phase = 'over'; s.winner = null; s.endReason = K('lAllOut'); log(s, 'lAllOut');
 }
 
 function showCard(s, p, deck, i) {
