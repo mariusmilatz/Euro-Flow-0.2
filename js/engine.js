@@ -342,9 +342,13 @@ function enterFast(s, p) {
 }
 
 function win(s, p, reason) {
+  s.places = [...(s.places || []), p.id]; p.place = s.places.length;
   s.phase = 'over'; s.winner = { pid: p.id, reason };
   log(s, 'lWins', { name: p.name, reason });
 }
+
+// after a win: can the others keep playing? (needs a human who is still in the game)
+export const canPlayOn = s => s.phase === 'over' && !!s.winner && s.players.some(q => !q.bot && !q.out && q.id !== s.winner.pid);
 
 function startTurn(s) {
   const p = s.players[s.turn];
@@ -562,6 +566,16 @@ export function apply(state, a, from) {
       break;
     }
     case 'setDream': { if (s.phase !== 'lobby') fail('errTooLate'); ownOrBot(a.pid).dream = a.dream; break; }
+    case 'playOn': { // the winner steps aside with their place, everyone else plays on
+      if (!isHost) fail('errOnlyHost');
+      if (!canPlayOn(s)) fail('errNotNow');
+      const w = P(s.winner.pid);
+      w.out = true; w.won = true;
+      s.winner = null; s.endReason = null; s.phase = 'play'; s.card = null;
+      log(s, 'lPlayOn', { name: w.name, n: w.place });
+      nextTurn(s);
+      break;
+    }
     case 'setBot': { if (s.phase !== 'lobby' || !isHost) fail('errOnlyHost'); P(a.pid).bot = a.bot; break; }
     case 'setMode': { if (s.phase !== 'lobby' || !isHost) fail('errOnlyHost'); if (MODES[a.mode]) s.mode = a.mode; break; }
     case 'setCity': { if (s.phase !== 'lobby') fail('errTooLate'); ownOrBot(a.pid).city = a.city; break; }

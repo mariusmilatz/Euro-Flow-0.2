@@ -314,3 +314,5 @@ summary::-webkit-details-marker { display: none; }
 .qsell summary { cursor: pointer; font-weight: 800; color: #6b3fd4; }
 .qsell[open] { background: #f7f3ff; border-radius: 10px; padding: 6px 8px; }
 .qsell td.muted { color: #6d6386; }
+.pchip.won { opacity: .8; }
+.pchip.won .bar i { background: #f2b705; width: 100% !important; }

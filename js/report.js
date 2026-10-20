@@ -23,12 +23,12 @@ function chart(s) {
 }
 
 export function reportHTML(s, mine, pname) {
-  const w = s.players.find(q => q.id === s.winner?.pid);
-  const ranked = [...s.players].sort((a, b) => netWorth(b, s) - netWorth(a, s));
+  const w = s.players.find(q => q.id === s.winner?.pid) || s.players.find(q => q.place === 1);
+  const ranked = [...s.players].sort((a, b) => (a.place || 99) - (b.place || 99) || netWorth(b, s) - netWorth(a, s));
   const me = s.players.find(mine);
   const myRank = me ? ranked.indexOf(me) + 1 : 0;
   const rows = ranked.map((p, i) => {
-    const status = p.out ? t('out') : p.track === 'fast' ? '🚀 ' + t('fastTrack') : `${fmt(passive(p))} / ${fmt(escapeTarget(p, s))}`;
+    const status = p.place ? '🏆 ' + t('placeN', { n: p.place }) : p.out ? t('out') : p.track === 'fast' ? '🚀 ' + t('fastTrack') : `${fmt(passive(p))} / ${fmt(escapeTarget(p, s))}`;
     return `<tr class="${mine(p) ? 'me' : ''}"><td>${i + 1}.</td><td><span class="dot" style="background:${p.color}"></span> ${esc(pname(p))}${p.bot ? ` <small>(${t('lvlShort_' + p.bot)})</small>` : ''}<br><small>${esc(profName(p.profKey))}</small></td>
       <td><b>${fmt(netWorth(p, s))}</b></td><td><small>${status}</small></td></tr>`;
   }).join('');

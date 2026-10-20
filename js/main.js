@@ -3,7 +3,7 @@ import {
   apply, newGame, passive, totalIncome, cashflow, cardOf, R, BUILDINGS, IMMO,
   sellable, salePrice, saleTax, nebenkosten, nkRate, darlehen, dreamCost, loanPay, buyCost,
   incomeLines, deductionLines, livingLines, saveLines, livingCosts, healthCost, escapeTarget, assetCf, netWorth,
-  payInfo, afaPotential, etfOf, bausparOf, etfSaleTax, working, quickSale,
+  payInfo, afaPotential, etfOf, bausparOf, etfSaleTax, working, quickSale, canPlayOn,
 } from './engine.js';
 import { boardSVG, drawDynamic } from './board.js';
 import { hostRoom, joinRoom, newCode } from './net.js';
@@ -310,6 +310,11 @@ function renderLobby() {
   if (net) { $('#invite-link').value = `${location.origin}${location.pathname}?room=${net.code}`; $('#room-code').textContent = net.code; }
   $('#lobby-mode').innerHTML = `<label>${t('gameMode')}</label><div class="modes">${['easy', 'classic', 'realistic'].map(m =>
     `<button class="modebtn ${state.mode === m ? 'on' : ''}" data-mode="${m}" ${host ? '' : 'disabled'}><b>${t('mode_' + m)}</b><small>${t('modeHint_' + m)}</small></button>`).join('')}</div>`;
+  const bots = state.players.filter(p => p.bot);
+  const allLvl = bots.length && bots.every(p => p.bot === bots[0].bot) ? bots[0].bot : null;
+  $('#lobby-alllvl').hidden = !host || !bots.length;
+  $('#lobby-alllvl').innerHTML = `<label>${t('allBots')}</label><div class="modes">${['easy', 'medium', 'hard'].map(l =>
+    `<button class="modebtn ${allLvl === l ? 'on' : ''}" data-alllvl="${l}"><b>${t('lvl_' + l)}</b></button>`).join('')}</div>`;
   $('#lobby-players').innerHTML = state.players.map(p => {
     const editable = mine(p) || (host && p.bot);
     return `<div class="lp" style="--c:${p.color}">
@@ -528,11 +533,11 @@ function renderPlayers() {
     if (!p.debts || mine(p)) return '';
     const exp = escapeTarget(p, state), pas = passive(p);
     const pct = p.track === 'fast' ? Math.min(100, (p.fast.income - p.fast.start) / 500) : Math.min(100, pas / exp * 100);
-    return `<button class="pchip ${p.id === viewPid ? 'on' : ''} ${p.out ? 'out' : ''}" data-view="${p.id}" style="--c:${p.color}">
+    return `<button class="pchip ${p.id === viewPid ? 'on' : ''} ${p.out ? (p.won ? 'won' : 'out') : ''}" data-view="${p.id}" style="--c:${p.color}">
       <span class="pn"><span class="dot"></span>${esc(pname(p))}${state.phase === 'play' && cur().id === p.id ? ' 🎲' : ''}</span>
       <span class="pm">${fmt(p.cash)}</span>
       <span class="bar"><i style="width:${pct}%"></i></span>
-      <span class="pl">${p.out ? t('out') : p.track === 'fast' ? '🚀 ' + t('fastTrack') : t('passiveOf', { pas: { m: pas }, exp: { m: exp } })}</span>
+      <span class="pl">${p.won ? '🏆 ' + t('placeN', { n: p.place }) : p.out ? t('out') : p.track === 'fast' ? '🚀 ' + t('fastTrack') : t('passiveOf', { pas: { m: pas }, exp: { m: exp } })}</span>
     </button>`;
   }).join('');
 }
@@ -664,7 +669,7 @@ function renderLog() {
 // one of my players went bankrupt while other people play on → leave or keep watching
 function renderOut() {
   if (state.phase !== 'play') return;
-  const p = state.players.find(q => mine(q) && q.out && !outShown.has(q.id));
+  const p = state.players.find(q => mine(q) && q.out && !q.won && !outShown.has(q.id));
   if (!p) return;
   outShown.add(p.id);
   const w = $('#winner');
@@ -680,7 +685,7 @@ function renderWinner() {
   if (w.dataset.closed === String(state.seq)) return;
   w.hidden = false;
   w.innerHTML = reportHTML(state, mine, pname);
-  w.querySelector('.report').insertAdjacentHTML('beforeend', `<div class="winbtns">${mode !== 'client' ? `<button class="btn big" id="again">${t('newGame')}</button>` : ''}<button class="btn ghost" id="closewin">${t('viewBoard')}</button></div>`);
+  w.querySelector('.report').insertAdjacentHTML('beforeend', `<div class="winbtns">${mode !== 'client' && canPlayOn(state) ? `<button class="btn big green" id="playon">${t('playOn')}</button>` : ''}${mode !== 'client' ? `<button class="btn big" id="again">${t('newGame')}</button>` : ''}<button class="btn ghost" id="closewin">${t('viewBoard')}</button></div>`);
 }
 
 // ---------- events ----------
@@ -707,6 +712,12 @@ document.addEventListener('click', e => {
   if (logOpen && !e.target.closest('.logwrap')) { logOpen = false; $('#logpanel').hidden = true; }
   if (e.target.closest('.logpanel')) return;
   const b = e.target.closest('button, [data-view]');
+  if (b && b.dataset.alllvl) {
+    const l = b.dataset.alllvl;
+    $('#lobby-botlevel').value = l;
+    for (const p of state.players.filter(q => q.bot && q.bot !== l)) dispatch({ type: 'setBot', pid: p.id, bot: l });
+    return;
+  }
   if (!b) return;
   const d = b.dataset;
   if (b.id === 'coach-close') return setCoach(false);
@@ -784,6 +795,7 @@ function setup() {
   $('#winner').addEventListener('click', e => {
     if (e.target.id === 'closewin') { $('#winner').hidden = true; if (state.phase === 'over') $('#winner').dataset.closed = String(state.seq); }
     if (e.target.id === 'outleave') { if (mode !== 'client') store.del(SAVE); location.href = location.pathname; }
+    if (e.target.id === 'playon') { $('#winner').hidden = true; return dispatch({ type: 'playOn' }); }
     if (e.target.id === 'again') { store.del(SAVE); location.href = location.pathname; }
   });
   $('#btn-leave').onclick = () => { if (confirm(t('leaveConfirm'))) location.href = location.pathname; };
