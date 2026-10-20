@@ -176,7 +176,9 @@ const S = {
   shares: ['shares', 'Aktien'],
   costLine: ['Cost: {cost} · Cash: {cash}', 'Kosten: {cost} · Bargeld: {cash}'],
   buyFor: ['Buy for {amt}', 'Kaufen für {amt}'],
-  inclLoan: ['(incl. {amt} bank loan)', '(inkl. {amt} Bankkredit)'],
+  inclLoan: ['(incl. {amt} bank loan → +{pay}/month)', '(inkl. {amt} Bankkredit → +{pay}/Monat)'],
+  needLoan: ['🏦 You need a {amt} bank loan for this → +{pay}/month in interest (your payday drops to {cf}).', '🏦 Dafür brauchst du {amt} Bankkredit → +{pay}/Monat Zinsen (dein Zahltag sinkt auf {cf}).'],
+  loanCalc: ['→ +{pay}/month', '→ +{pay}/Monat'],
   sell: ['Sell', 'Verkaufen'],
   keepIt: ['{name}: keep it (don’t sell)', '{name}: behalten (nicht verkaufen)'],
   avg: ['avg', 'Ø'],
@@ -237,7 +239,7 @@ const S = {
   sp_charity: ['Charity', 'Spende'], sp_baby: ['Baby', 'Baby'], sp_downsized: ['Fired', 'Gekündigt'],
 
   // Log
-  lAutoLoan: ['🏦 {name} automatically takes a {amt} bank loan.', '🏦 {name} nimmt automatisch {amt} Bankkredit auf.'],
+  lAutoLoan: ['🏦 {name} automatically takes a {amt} bank loan (+{pay}/month in interest).', '🏦 {name} nimmt automatisch {amt} Bankkredit auf (+{pay}/Monat Zinsen).'],
   lPays: ['💸 {name} pays {amt} – {why}', '💸 {name} zahlt {amt} – {why}'],
   lPayday: ['💰 Payday for {name}: {amt}', '💰 Zahltag für {name}: {amt}'],
   lBankrupt: ['⚠️ {name} can’t pay – personal bankruptcy!', '⚠️ {name} ist zahlungsunfähig – Privatinsolvenz!'],

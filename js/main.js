@@ -411,6 +411,13 @@ function cardBody(card) {
   return '';
 }
 
+// Bank loan the player would need for a cost, plus what it does to the monthly payday.
+const loanFor = (p, cost) => p.track === 'rat' ? Math.max(0, Math.ceil((cost - p.cash) / 1000) * 1000) : 0;
+const needLoanHint = (p, cost, cfDelta = 0) => {
+  const l = loanFor(p, cost);
+  return l ? t('needLoan', { amt: { m: l }, pay: { m: loanPay({ loan: l }) }, cf: { sm: cashflow(p, state) + cfDelta - loanPay({ loan: l }) } }) : '';
+};
+
 function renderCard() {
   const box = $('#card'), s = state, c = cur();
   const card = cardOf(s.card);
@@ -427,11 +434,12 @@ function renderCard() {
       const sug = Math.max(100, Math.round(cashflow(c, s) * 0.2 / 50) * 50);
       actions += `<div class="buyrow">${t('etfPerPayday')} <input type="number" id="qty" min="50" step="50" value="${sug}"> € <button class="btn green" data-act="buy">${etfOf(c) ? t('etfIncrease') : t('etfStart')}</button></div>`;
     } else if (card.type === 'bauspar') actions += `<button class="btn green" data-act="buy">${t('bausparSign', { amt: { m: card.monthly } })}</button>`;
-    else if (card.type === 'choice') actions += `<div class="row"><button class="btn" data-act="choose" data-opt="quit">${t('choiceQuit')}</button><button class="btn ghost" data-act="choose" data-opt="stay">${t('choiceStay')}</button></div>`;
+    else if (card.type === 'choice') actions += `<div class="row"><button class="btn" data-act="choose" data-opt="quit">${t('choiceQuit')}</button><button class="btn ghost" data-act="choose" data-opt="stay">${t('choiceStay')}</button></div>${loanFor(c, 800) ? `<p class="fine loanhint">${needLoanHint(c, 800)}</p>` : ''}`;
     else if (card.type === 'asset') {
       const need = buyCost(card);
-      const loan = Math.max(0, Math.ceil((need - c.cash) / 1000) * 1000);
-      actions += `<button class="btn green" data-act="buy">${t('buyFor', { amt: { m: need } })}${loan ? ` <small>${t('inclLoan', { amt: { m: loan } })}</small>` : ''}</button>`;
+      const loan = loanFor(c, need);
+      actions += `<button class="btn green" data-act="buy">${t('buyFor', { amt: { m: need } })}${loan ? ` <small>${t('inclLoan', { amt: { m: loan }, pay: { m: loanPay({ loan }) } })}</small>` : ''}</button>`;
+      if (loan) actions += `<p class="fine loanhint">${needLoanHint(c, need, card.cf || 0)}</p>`;
       const b = bausparOf(c);
       if (b && b.ready && BUILDINGS.includes(card.kind)) actions += `<button class="btn green dark" data-act="buy" data-bauspar="1">${t('buyWithBauspar', { amt: { m: b.balance } })}</button>`;
     }
@@ -479,7 +487,7 @@ function renderCard() {
     inp.oninput = upd; upd();
   }
   const q = $('#qty');
-  if (q && card.type === 'stock') { const upd = () => { $('#qtycost').textContent = t('costLine', { cost: { m: (+q.value || 0) * card.price }, cash: { m: c.cash } }); }; q.oninput = upd; upd(); }
+  if (q && card.type === 'stock') { const upd = () => { const cost = (+q.value || 0) * card.price; $('#qtycost').innerHTML = t('costLine', { cost: { m: cost }, cash: { m: c.cash } }) + (loanFor(c, cost) ? `<br><span class="loanhint">${needLoanHint(c, cost)}</span>` : ''); }; q.oninput = upd; upd(); }
 }
 
 function renderPlayers() {
@@ -571,9 +579,11 @@ function renderSheet() {
     <details open><summary>${t('assets')}</summary>${assets}${home}</details>
     <details open><summary>${t('liabilities')}</summary>${debts}
       <div class="r"><span>${t('bankLoan')}<small>${t('interestMonth', { amt: { m: loanPay(p) } })}</small></span><b>${fmt(p.loan)}</b></div>
-      ${can ? `<div class="loanrow"><input type="number" id="loanamt" step="1000" min="1000" value="1000"><button class="btn small" data-act="loan" data-pid="${p.id}">${t('takeLoan')}</button>${p.loan ? `<button class="btn small ghost" data-act="repay" data-which="loan" data-pid="${p.id}">${t('repay')}</button>` : ''}</div>` : ''}
+      ${can ? `<div class="loanrow"><input type="number" id="loanamt" step="1000" min="1000" value="1000"><span class="fine" id="loancalc"></span><button class="btn small" data-act="loan" data-pid="${p.id}">${t('takeLoan')}</button>${p.loan ? `<button class="btn small ghost" data-act="repay" data-which="loan" data-pid="${p.id}">${t('repay')}</button>` : ''}</div>` : ''}
     </details>
     <p class="fine">${t('savingsNote', { amt: { m: p.savings } })}<br>${t('allowanceLeft', { amt: { m: p.allowance }, n: p.paydays })}</p>`;
+  const la = $('#loanamt');
+  if (la) { const upd = () => { $('#loancalc').textContent = t('loanCalc', { pay: { m: loanPay({ loan: Math.max(0, Math.round((+la.value || 0) / 1000) * 1000) }) } }); }; la.oninput = upd; upd(); }
 }
 
 // does a log entry concern this player?

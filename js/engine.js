@@ -221,7 +221,7 @@ function charge(s, p, amount, why) {
   if (p.cash < amount && p.track === 'rat') {
     const loan = Math.ceil((amount - p.cash) / 1000) * 1000;
     p.loan += loan; p.cash += loan;
-    log(s, 'lAutoLoan', { name: p.name, amt: M(loan) });
+    log(s, 'lAutoLoan', { name: p.name, amt: M(loan), pay: M(loan / 10) });
   }
   p.cash -= amount;
   log(s, 'lPays', { name: p.name, amt: M(amount), why });
