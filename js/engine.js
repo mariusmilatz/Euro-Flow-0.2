@@ -576,6 +576,12 @@ export function apply(state, a, from) {
       nextTurn(s);
       break;
     }
+    case 'setBotLevel': { // one difficulty for every computer player
+      if (s.phase !== 'lobby' || !isHost) fail('errOnlyHost');
+      s.botLevel = a.bot;
+      for (const q of s.players) if (q.bot) q.bot = a.bot;
+      break;
+    }
     case 'setBot': { if (s.phase !== 'lobby' || !isHost) fail('errOnlyHost'); P(a.pid).bot = a.bot; break; }
     case 'setMode': { if (s.phase !== 'lobby' || !isHost) fail('errOnlyHost'); if (MODES[a.mode]) s.mode = a.mode; break; }
     case 'setCity': { if (s.phase !== 'lobby') fail('errTooLate'); ownOrBot(a.pid).city = a.city; break; }

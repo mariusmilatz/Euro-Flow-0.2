@@ -313,7 +313,7 @@ const S = {
   playOn: ['▶ Keep playing', '▶ Weiterspielen'],
   placeN: ['{n}. place', '{n}. Platz'],
   lPlayOn: ['🏆 {name} finishes in {n}. place – the others play on!', '🏆 {name} beendet das Spiel auf Platz {n} – die anderen spielen weiter!'],
-  allBots: ['Level for all computer players', 'Stufe für alle Computer-Spieler'],
+  allBots: ['Computer players’ level (applies to all)', 'Stufe der Computer-Spieler (gilt für alle)'],
   qsBtn: ['💶 Sell now', '💶 Jetzt verkaufen'],
   qsIntro: ['Need cash? An estate agent sells it quickly – but a fast sale costs extra:', 'Brauchst du Geld? Ein Makler verkauft schnell – aber Eile kostet extra:'],
   qsMarket: ['Market value today (held {n} yrs)', 'Marktwert heute ({n} J. gehalten)'],

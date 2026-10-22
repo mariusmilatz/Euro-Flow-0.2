@@ -29,6 +29,8 @@ let lastTurnSeen = null;
 let justOpen = false;   // coach: "what just happened" expanded?
 let logOpen = false;
 let logFilter = 'all';  // 'all' or a player id
+const secClosed = new Set();   // statement sections the viewer collapsed (all open by default)
+const secOpen = k => (secClosed.has(k) ? '' : 'open');
 let qsOpen = null;      // property whose "sell now" breakdown is unfolded
 let closedCard = null;  // another player's card the viewer clicked away
 const outShown = new Set(); // my players whose 'you're out' notice was shown
@@ -120,7 +122,7 @@ function onClientMessage(msg) {
 
 // ---------- computer players (run on host / local device only) ----------
 let botTimer = null, botCardSeen = null, cardSince = 0, ackCard = null;
-const RESULT_MS = 2000;   // how long the other player's choice stays visible after a click
+const RESULT_MS = 1500;   // how long the other player's choice stays visible after a click
 const showResultUntil = {};   // card id → time until the bot's result stays visible after a click
 const BUYABLE = ['asset', 'stock', 'etfplan', 'bauspar', 'choice'];
 // a computer player still has to decide on its own card (buy / pass / choose)
@@ -199,7 +201,7 @@ function botStep() {
 // How long another player's popup stays open: adapts to how much there is to read
 // (≈ 0.2 s per word + 2 s, between 3 and 14 s). A click on the board closes it sooner.
 const cardShownAt = {}, cardWords = {};
-const READ = { base: 2000, perWord: 200, min: 3000, max: 14000 };
+const READ = { base: 1500, perWord: 200, min: 2500, max: 13500 };
 const readMs = id => Math.min(READ.max, Math.max(READ.min, READ.base + (cardWords[id] || 0) * READ.perWord));
 let closeTimer = null;
 function closeCardAt(id, at) {
@@ -263,7 +265,7 @@ function startLocal(existing) {
   state = existing || newGame();
   if (!existing) {
     addSelf();
-    for (let i = 0; i < 2; i++) addBot('medium');
+    for (let i = 0; i < 2; i++) addBot();
   }
   history.replaceState(null, '', location.pathname);
   changed();
@@ -272,7 +274,8 @@ function addSelf() {
   const n = $('#name').value.trim();
   state = apply(state, { type: 'addPlayer', name: n || 'Player 1' }, mode === 'local' ? null : 'host');
 }
-function addBot(level) {
+const botLevel = () => state.botLevel || state.players.find(p => p.bot)?.bot || 'medium';
+function addBot(level = botLevel()) {
   const used = state.players.map(p => p.name);
   const name = BOT_NAMES.find(n => !used.includes(n)) || 'Bot';
   dispatch({ type: 'addPlayer', name, bot: level });
@@ -323,9 +326,8 @@ function renderLobby() {
   if (net) { $('#invite-link').value = `${location.origin}${location.pathname}?room=${net.code}`; $('#room-code').textContent = net.code; }
   $('#lobby-mode').innerHTML = `<label>${t('gameMode')}</label><div class="modes">${['easy', 'classic', 'realistic'].map(m =>
     `<button class="modebtn ${state.mode === m ? 'on' : ''}" data-mode="${m}" ${host ? '' : 'disabled'}><b>${t('mode_' + m)}</b><small>${t('modeHint_' + m)}</small></button>`).join('')}</div>`;
-  const bots = state.players.filter(p => p.bot);
-  const allLvl = bots.length && bots.every(p => p.bot === bots[0].bot) ? bots[0].bot : null;
-  $('#lobby-alllvl').hidden = !host || !bots.length;
+  const allLvl = botLevel();
+  $('#lobby-alllvl').hidden = !host;
   $('#lobby-alllvl').innerHTML = `<label>${t('allBots')}</label><div class="modes">${['easy', 'medium', 'hard'].map(l =>
     `<button class="modebtn ${allLvl === l ? 'on' : ''}" data-alllvl="${l}"><b>${t('lvl_' + l)}</b></button>`).join('')}</div>`;
   $('#lobby-players').innerHTML = state.players.map(p => {
@@ -333,7 +335,6 @@ function renderLobby() {
     return `<div class="lp" style="--c:${p.color}">
       <span class="dot"></span>
       <b>${esc(pname(p))}</b>${p.owner === me && mode !== 'local' && !p.bot ? ` <small>${t('you')}</small>` : ''}
-      ${p.bot ? (host ? `<select data-botlvl="${p.id}">${['easy', 'medium', 'hard'].map(l => `<option value="${l}" ${p.bot === l ? 'selected' : ''}>${t('lvl_' + l)}</option>`).join('')}</select>` : `<small>${t('lvlShort_' + p.bot)}</small>`) : ''}
       <label>${t('dream')}
         <select data-dream="${p.id}" ${editable ? '' : 'disabled'}>
           ${DREAM_INDEXES.map(d => `<option value="${d}" ${p.dream === d ? 'selected' : ''}>${FAST[d].icon} ${esc(fastName(d))} (${fmt(FAST[d].cost)})</option>`).join('')}
@@ -652,13 +653,13 @@ function renderSheet() {
       <div class="prog"><i style="width:${Math.min(100, pas / target * 100)}%"></i><span>${t('progress', { pas: { m: pas }, exp: { m: target }, rest: pas > target ? t('escape') : t('stillNeed', { amt: { m: target - pas } }) })}</span></div>
       <small>${t(health ? 'escapeBreak' : 'escapeBreakNoHealth', { living: { m: living }, health: { m: health }, total: { m: target } })}</small>
     </div>
-    <details open><summary>${t('income')} <b>${fmt(totalIncome(p, s))}</b></summary>${income.join('')}</details>
-    ${deds.length ? `<details open><summary>${t('deductions')} <b>${fmt(deds.reduce((x, [, v]) => x + v, 0))}</b></summary>${lines(deds)}</details>` : ''}
-    <details open><summary>${t('livingCosts')} <b>${fmt(living)}</b></summary>${lines(livingLines(p))}</details>
-    ${saves.length ? `<details open><summary>${t('savingsPlans')} <b>${fmt(saves.reduce((x, [, v]) => x + v, 0))}</b></summary>${lines(saves)}</details>` : ''}
+    <details class="sec" data-sec="income" ${secOpen('income')}><summary>${t('income')} <b>${fmt(totalIncome(p, s))}</b></summary>${income.join('')}</details>
+    ${deds.length ? `<details class="sec" data-sec="deductions" ${secOpen('deductions')}><summary>${t('deductions')} <b>${fmt(deds.reduce((x, [, v]) => x + v, 0))}</b></summary>${lines(deds)}</details>` : ''}
+    <details class="sec" data-sec="livingCosts" ${secOpen('livingCosts')}><summary>${t('livingCosts')} <b>${fmt(living)}</b></summary>${lines(livingLines(p))}</details>
+    ${saves.length ? `<details class="sec" data-sec="savingsPlans" ${secOpen('savingsPlans')}><summary>${t('savingsPlans')} <b>${fmt(saves.reduce((x, [, v]) => x + v, 0))}</b></summary>${lines(saves)}</details>` : ''}
     ${advisor}
-    <details open><summary>${t('assets')}</summary>${assets}${home}</details>
-    <details open><summary>${t('liabilities')}</summary>${debts}
+    <details class="sec" data-sec="assets" ${secOpen('assets')}><summary>${t('assets')}</summary>${assets}${home}</details>
+    <details class="sec" data-sec="liabilities" ${secOpen('liabilities')}><summary>${t('liabilities')}</summary>${debts}
       <div class="r"><span>${t('bankLoan')}<small>${t('interestMonth', { amt: { m: loanPay(p) } })}</small></span><b>${fmt(p.loan)}</b></div>
       ${can ? `<div class="loanrow"><input type="number" id="loanamt" step="1000" min="1000" value="1000"><span class="fine" id="loancalc"></span><button class="btn small" data-act="loan" data-pid="${p.id}">${t('takeLoan')}</button>${p.loan ? `<button class="btn small ghost" data-act="repay" data-which="loan" data-pid="${p.id}">${t('repay')}</button>` : ''}</div>` : ''}
     </details>
@@ -707,7 +708,7 @@ function renderWinner() {
 }
 
 // ---------- events ----------
-document.addEventListener('toggle', e => { const d = e.target; if (d.matches && d.matches('details.qsell')) { if (d.open) qsOpen = d.dataset.qs; else if (qsOpen === d.dataset.qs) qsOpen = null; } }, true);
+document.addEventListener('toggle', e => { const d = e.target; if (d.matches && d.matches('details.sec')) { if (d.open) secClosed.delete(d.dataset.sec); else secClosed.add(d.dataset.sec); } if (d.matches && d.matches('details.qsell')) { if (d.open) qsOpen = d.dataset.qs; else if (qsOpen === d.dataset.qs) qsOpen = null; } }, true);
 document.addEventListener('click', e => {
   // click anywhere on the board (not on a panel) closes another player's card popup and lets the game go on
   if (state && state.card && e.target.closest('#board') && !e.target.closest('button')) {
@@ -729,10 +730,7 @@ document.addEventListener('click', e => {
   if (e.target.closest('.logpanel')) return;
   const b = e.target.closest('button, [data-view]');
   if (b && b.dataset.alllvl) {
-    const l = b.dataset.alllvl;
-    $('#lobby-botlevel').value = l;
-    for (const p of state.players.filter(q => q.bot && q.bot !== l)) dispatch({ type: 'setBot', pid: p.id, bot: l });
-    return;
+    return dispatch({ type: 'setBotLevel', bot: b.dataset.alllvl });
   }
   if (!b) return;
   const d = b.dataset;
@@ -797,7 +795,7 @@ function setup() {
   $('#joincode').addEventListener('keydown', e => { if (e.key === 'Enter') startJoin($('#joincode').value); });
   $('#lobby-add').onclick = () => { dispatch({ type: 'addPlayer', name: $('#lobby-name').value.trim() || undefined }); $('#lobby-name').value = ''; };
   $('#lobby-name').addEventListener('keydown', e => { if (e.key === 'Enter') $('#lobby-add').click(); });
-  $('#lobby-addbot').onclick = () => addBot($('#lobby-botlevel').value);
+  $('#lobby-addbot').onclick = () => addBot();
   $('#lobby-start').onclick = () => dispatch({ type: 'start' });
   $('#lobby-coach').onchange = e => setCoach(e.target.checked);
   $('#coach-toggle').onclick = () => setCoach(!coachOn);
